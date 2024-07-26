@@ -2,9 +2,6 @@ import argparse
 from typing import Callable, Collection, Dict, List, Optional, Tuple
 
 import numpy as np
-import torch
-from typeguard import typechecked
-
 from espnet2.asr.encoder.abs_encoder import AbsEncoder
 from espnet2.asr.frontend.abs_frontend import AbsFrontend
 from espnet2.asr.frontend.asteroid_frontend import AsteroidFrontend
@@ -26,9 +23,8 @@ from espnet2.spk.encoder.ska_tdnn_encoder import SkaTdnnEncoder
 from espnet2.spk.encoder.xvector_encoder import XvectorEncoder
 from espnet2.spk.espnet_model import ESPnetSpeakerModel
 from espnet2.spk.loss.aamsoftmax import AAMSoftmax
-from espnet2.spk.loss.aamsoftmax_subcenter_intertopk import (
-    ArcMarginProduct_intertopk_subcenter,
-)
+from espnet2.spk.loss.aamsoftmax_subcenter_intertopk import ArcMarginProduct_intertopk_subcenter
+from espnet2.spk.loss.contrastive_loss import Contrastive
 from espnet2.spk.pooling.abs_pooling import AbsPooling
 from espnet2.spk.pooling.chn_attn_stat_pooling import ChnAttnStatPooling
 from espnet2.spk.pooling.mean_pooling import MeanPooling
@@ -41,15 +37,14 @@ from espnet2.tasks.abs_task import AbsTask
 from espnet2.torch_utils.initialize import initialize
 from espnet2.train.class_choices import ClassChoices
 from espnet2.train.collate_fn import CommonCollateFn
-from espnet2.train.preprocessor import (
-    AbsPreprocessor,
-    CommonPreprocessor,
-    SpkPreprocessor,
-)
+from espnet2.train.preprocessor import AbsPreprocessor, CommonPreprocessor, SpkPreprocessor
 from espnet2.train.spk_trainer import SpkTrainer as Trainer
 from espnet2.utils.get_default_kwargs import get_default_kwargs
 from espnet2.utils.nested_dict_action import NestedDictAction
 from espnet2.utils.types import int_or_none, str2bool, str_or_none
+from typeguard import typechecked
+
+import torch
 
 # Check and understand
 frontend_choices = ClassChoices(
@@ -137,6 +132,7 @@ loss_choices = ClassChoices(
     classes=dict(
         aamsoftmax=AAMSoftmax,
         aamsoftmax_sc_topk=ArcMarginProduct_intertopk_subcenter,
+        contrastive=Contrastive,
     ),
     default="aamsoftmax",
 )
@@ -223,8 +219,7 @@ class SpeakerTask(AbsTask):
             "--num_eval",
             type=int,
             default=10,
-            help="Number of segments to make from one utterance in the "
-            "inference phase",
+            help="Number of segments to make from one utterance in the " "inference phase",
         )
 
         group.add_argument(
@@ -275,9 +270,7 @@ class SpeakerTask(AbsTask):
         return retval
 
     @classmethod
-    def required_data_names(
-        cls, train: bool = True, inference: bool = False
-    ) -> Tuple[str, ...]:
+    def required_data_names(cls, train: bool = True, inference: bool = False) -> Tuple[str, ...]:
         if train:
             retval = ("speech", "spk_labels")
         else:
@@ -286,9 +279,7 @@ class SpeakerTask(AbsTask):
         return retval
 
     @classmethod
-    def optional_data_names(
-        cls, train: bool = True, inference: bool = False
-    ) -> Tuple[str, ...]:
+    def optional_data_names(cls, train: bool = True, inference: bool = False) -> Tuple[str, ...]:
         # When calculating EER, we need trials where each trial has two
         # utterances. speech2 corresponds to the second utterance of each
         # trial pair in the validation/inference phase.
@@ -331,15 +322,11 @@ class SpeakerTask(AbsTask):
         pooling_output_size = pooling.output_size()
 
         projector_class = projector_choices.get_class(args.projector)
-        projector = projector_class(
-            input_size=pooling_output_size, **args.projector_conf
-        )
+        projector = projector_class(input_size=pooling_output_size, **args.projector_conf)
         projector_output_size = projector.output_size()
 
         loss_class = loss_choices.get_class(args.loss)
-        loss = loss_class(
-            nout=projector_output_size, nclasses=args.spk_num, **args.loss_conf
-        )
+        loss = loss_class(nout=projector_output_size, nclasses=args.spk_num, **args.loss_conf)
 
         model = ESPnetSpeakerModel(
             frontend=frontend,
