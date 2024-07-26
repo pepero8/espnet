@@ -4,11 +4,11 @@ from functools import partial
 from typing import Any, Optional, Sequence, Union
 
 import numpy as np
-from torch.utils.data import DataLoader
-from typeguard import typechecked
-
 from espnet2.iterators.abs_iter_factory import AbsIterFactory
 from espnet2.samplers.abs_sampler import AbsSampler
+from typeguard import typechecked
+
+from torch.utils.data import DataLoader
 
 
 def worker_init_fn(worker_id, base_seed=0):
@@ -86,25 +86,16 @@ class SequenceIterFactory(AbsIterFactory):
                 if offset >= self.num_iters_per_epoch:
                     current_batches = self.sampler.generate(real_epoch + self.seed)
                     if shuffle:
-                        np.random.RandomState(real_epoch + self.seed).shuffle(
-                            current_batches
-                        )
-                    batches = current_batches[
-                        offset - self.num_iters_per_epoch : offset
-                    ]
+                        np.random.RandomState(real_epoch + self.seed).shuffle(current_batches)
+                    batches = current_batches[offset - self.num_iters_per_epoch : offset]
                 else:
                     prev_batches = self.sampler.generate(real_epoch - 1 + self.seed)
                     current_batches = self.sampler.generate(real_epoch + self.seed)
                     if shuffle:
-                        np.random.RandomState(real_epoch - 1 + self.seed).shuffle(
-                            prev_batches
-                        )
-                        np.random.RandomState(real_epoch + self.seed).shuffle(
-                            current_batches
-                        )
+                        np.random.RandomState(real_epoch - 1 + self.seed).shuffle(prev_batches)
+                        np.random.RandomState(real_epoch + self.seed).shuffle(current_batches)
                     batches = (
-                        prev_batches[offset - self.num_iters_per_epoch :]
-                        + current_batches[:offset]
+                        prev_batches[offset - self.num_iters_per_epoch :] + current_batches[:offset]
                     )
 
             # If corpus size is less than the num_per_epoch
@@ -123,9 +114,7 @@ class SequenceIterFactory(AbsIterFactory):
                         _cursor = 0
                         current_batches = self.sampler.generate(_epoch + self.seed)
                         if shuffle:
-                            np.random.RandomState(_epoch + self.seed).shuffle(
-                                current_batches
-                            )
+                            np.random.RandomState(_epoch + self.seed).shuffle(current_batches)
                     else:
                         _cursor = _cursor + _remain
                     _remain -= len(_batches)
