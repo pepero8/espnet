@@ -12,15 +12,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import humanfriendly
 import numpy as np
-import torch
-import torch.multiprocessing
-import torch.nn
-import torch.optim
 import yaml
-from packaging.version import parse as V
-from torch.utils.data import DataLoader
-from typeguard import typechecked
-
 from espnet import __version__
 from espnet2.iterators.abs_iter_factory import AbsIterFactory
 from espnet2.iterators.category_iter_factory import CategoryIterFactory
@@ -34,9 +26,7 @@ from espnet2.optimizers.sgd import SGD
 from espnet2.samplers.build_batch_sampler import BATCH_TYPES, build_batch_sampler
 from espnet2.samplers.category_balanced_sampler import CategoryBalancedSampler
 from espnet2.samplers.unsorted_batch_sampler import UnsortedBatchSampler
-from espnet2.schedulers.cosine_anneal_warmup_restart import (
-    CosineAnnealingWarmupRestarts,
-)
+from espnet2.schedulers.cosine_anneal_warmup_restart import CosineAnnealingWarmupRestarts
 from espnet2.schedulers.noam_lr import NoamLR
 from espnet2.schedulers.piecewise_linear_warmup_lr import PiecewiseLinearWarmupLR
 from espnet2.schedulers.warmup_lr import WarmupLR
@@ -73,6 +63,14 @@ from espnet2.utils.types import (
 )
 from espnet2.utils.yaml_no_alias_safe_dump import yaml_no_alias_safe_dump
 from espnet.utils.cli_utils import get_commandline_args
+from packaging.version import parse as V
+from typeguard import typechecked
+
+import torch
+import torch.multiprocessing
+import torch.nn
+import torch.optim
+from torch.utils.data import DataLoader
 
 try:
     import wandb
@@ -232,9 +230,7 @@ class AbsTask(ABC):
 
     @classmethod
     @abstractmethod
-    def required_data_names(
-        cls, train: bool = True, inference: bool = False
-    ) -> Tuple[str, ...]:
+    def required_data_names(cls, train: bool = True, inference: bool = False) -> Tuple[str, ...]:
         """Define the required names by Task
 
         This function is used by
@@ -253,9 +249,7 @@ class AbsTask(ABC):
 
     @classmethod
     @abstractmethod
-    def optional_data_names(
-        cls, train: bool = True, inference: bool = False
-    ) -> Tuple[str, ...]:
+    def optional_data_names(cls, train: bool = True, inference: bool = False) -> Tuple[str, ...]:
         """Define the optional names by Task
 
         This function is used by
@@ -486,8 +480,7 @@ class AbsTask(ABC):
             "--patience",
             type=int_or_none,
             default=None,
-            help="Number of epochs to wait without improvement "
-            "before stopping the training",
+            help="Number of epochs to wait without improvement " "before stopping the training",
         )
         group.add_argument(
             "--val_scheduler_criterion",
@@ -551,8 +544,7 @@ class AbsTask(ABC):
             "--grad_noise",
             type=str2bool,
             default=False,
-            help="The flag to switch to use noise injection to "
-            "gradients during training",
+            help="The flag to switch to use noise injection to " "gradients during training",
         )
         group.add_argument(
             "--accum_grad",
@@ -564,8 +556,7 @@ class AbsTask(ABC):
             "--no_forward_run",
             type=str2bool,
             default=False,
-            help="Just only iterating data loading without "
-            "model forwarding and training",
+            help="Just only iterating data loading without " "model forwarding and training",
         )
         group.add_argument(
             "--resume",
@@ -894,8 +885,7 @@ class AbsTask(ABC):
             "--allow_variable_data_keys",
             type=str2bool,
             default=False,
-            help="Allow the arbitrary keys for mini-batch with ignoring "
-            "the task requirements",
+            help="Allow the arbitrary keys for mini-batch with ignoring " "the task requirements",
         )
         group.add_argument(
             "--max_cache_size",
@@ -982,9 +972,7 @@ class AbsTask(ABC):
         model: torch.nn.Module,
     ) -> List[torch.optim.Optimizer]:
         if cls.num_optimizers != 1:
-            raise RuntimeError(
-                "build_optimizers() must be overridden if num_optimizers != 1"
-            )
+            raise RuntimeError("build_optimizers() must be overridden if num_optimizers != 1")
 
         optim_class = optim_classes.get(args.optim)
         if optim_class is None:
@@ -1088,9 +1076,7 @@ class AbsTask(ABC):
             if "-" in k:
                 raise RuntimeError(f'Use "_" instead of "-": parser.get_parser("{k}")')
 
-        required = ", ".join(
-            f"--{a}" for a in args.required if getattr(args, a) is None
-        )
+        required = ", ".join(f"--{a}" for a in args.required if getattr(args, a) is None)
 
         if len(required) != 0:
             parser = cls.get_parser()
@@ -1127,9 +1113,9 @@ class AbsTask(ABC):
                     f' {cls.__name__}. but "{dataset.names()}" are input.\n{mes}'
                 )
         if not allow_variable_data_keys:
-            task_keys = cls.required_data_names(
+            task_keys = cls.required_data_names(train, inference) + cls.optional_data_names(
                 train, inference
-            ) + cls.optional_data_names(train, inference)
+            )
             for k in dataset.names():
                 if k not in task_keys:
                     raise RuntimeError(
@@ -1233,10 +1219,7 @@ class AbsTask(ABC):
             if not distributed_option.distributed:
                 _rank = ""
             else:
-                _rank = (
-                    f":{distributed_option.dist_rank}/"
-                    f"{distributed_option.dist_world_size}"
-                )
+                _rank = f":{distributed_option.dist_rank}/" f"{distributed_option.dist_world_size}"
 
             # NOTE(kamo):
             # logging.basicConfig() is invoked in main_worker() instead of main()
@@ -1279,8 +1262,7 @@ class AbsTask(ABC):
             model = cls.build_model(args=args)
             if not isinstance(model, AbsESPnetModel):
                 raise RuntimeError(
-                    f"model must inherit {AbsESPnetModel.__name__},"
-                    f" but got {type(model)}"
+                    f"model must inherit {AbsESPnetModel.__name__}," f" but got {type(model)}"
                 )
             model = model.to(
                 dtype=getattr(torch, args.train_dtype),
@@ -1308,9 +1290,7 @@ class AbsTask(ABC):
                 if name is not None:
                     cls_ = scheduler_classes.get(name)
                     if cls_ is None:
-                        raise ValueError(
-                            f"must be one of {list(scheduler_classes)}: {name}"
-                        )
+                        raise ValueError(f"must be one of {list(scheduler_classes)}: {name}")
                     scheduler = cls_(optim, **conf)
                 else:
                     scheduler = None
@@ -1331,9 +1311,7 @@ class AbsTask(ABC):
         if not distributed_option.distributed or distributed_option.dist_rank == 0:
             output_dir.mkdir(parents=True, exist_ok=True)
             with (output_dir / "config.yaml").open("w", encoding="utf-8") as f:
-                logging.info(
-                    f'Saving the configuration in {output_dir / "config.yaml"}'
-                )
+                logging.info(f'Saving the configuration in {output_dir / "config.yaml"}')
                 yaml_no_alias_safe_dump(vars(args), f, indent=4, sort_keys=False)
 
         if args.dry_run:
@@ -1402,9 +1380,7 @@ class AbsTask(ABC):
                     # NOTE(kamo): "cuda" for torch.load always indicates cuda:0
                     #   in PyTorch<=1.4
                     map_location=(
-                        f"cuda:{torch.cuda.current_device()}"
-                        if args.ngpu > 0
-                        else "cpu"
+                        f"cuda:{torch.cuda.current_device()}" if args.ngpu > 0 else "cpu"
                     ),
                 )
 
@@ -1451,10 +1427,7 @@ class AbsTask(ABC):
                     args.use_wandb = False
 
             if args.use_wandb:
-                if (
-                    not distributed_option.distributed
-                    or distributed_option.dist_rank == 0
-                ):
+                if not distributed_option.distributed or distributed_option.dist_rank == 0:
                     if args.wandb_project is None:
                         project = "ESPnet_" + cls.__name__
                     else:
@@ -1699,9 +1672,7 @@ class AbsTask(ABC):
             sort_in_batch=args.sort_in_batch,
             sort_batch=args.sort_batch,
             drop_last=args.drop_last_iter,
-            min_batch_size=(
-                torch.distributed.get_world_size() if iter_options.distributed else 1
-            ),
+            min_batch_size=(torch.distributed.get_world_size() if iter_options.distributed else 2), # changed by jaehwan (1 -> 2)
             utt2category_file=utt2category_file,
         )
 
@@ -1771,15 +1742,11 @@ class AbsTask(ABC):
             logging.warning("Reading " + category2utt_file)
         else:
             category2utt_file = None
-            raise ValueError(
-                "category2utt mandatory for category iterator, but not found"
-            )
+            raise ValueError("category2utt mandatory for category iterator, but not found")
 
         sampler_args = dict(
             batch_size=iter_options.batch_size,
-            min_batch_size=(
-                torch.distributed.get_world_size() if iter_options.distributed else 1
-            ),
+            min_batch_size=(torch.distributed.get_world_size() if iter_options.distributed else 2), # changed by jaehwan (1 -> 2)
             drop_last=args.drop_last_iter,
             category2utt_file=category2utt_file,
             epoch=1,
@@ -1950,9 +1917,9 @@ class AbsTask(ABC):
 
         # 1. Sanity check
         num_splits = None
-        for path in [
-            path for path, _, _ in iter_options.data_path_and_name_and_type
-        ] + list(iter_options.shape_files):
+        for path in [path for path, _, _ in iter_options.data_path_and_name_and_type] + list(
+            iter_options.shape_files
+        ):
             if not Path(path).is_dir():
                 raise RuntimeError(f"{path} is not a directory")
             p = Path(path) / "num_splits"
