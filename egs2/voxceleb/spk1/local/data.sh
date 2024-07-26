@@ -7,7 +7,7 @@ stage=1
 stop_stage=100
 n_proc=8
 
-data_dir_prefix= # root dir to save datasets.
+data_dir_prefix=/shared/oil/voice/ # root dir to save datasets.
 
 trg_dir=data
 
@@ -39,7 +39,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     fi
 
     # download Vox1-O eval protocol
-    if [ ! -f "${data_dir_prefix}/veri_test2.txt" ]; then
+    if [ ! -f "${data_dir_prefix}/voxceleb1/veri_test2.txt" ]; then
         log "Download Vox1-O cleaned eval protocol."
         wget -P ${data_dir_prefix} https://www.robots.ox.ac.uk/~vgg/data/voxceleb/meta/veri_test2.txt
     else
@@ -47,21 +47,21 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     fi
 
     # download VoxCeleb1 devset txt data
-    if [ ! -f ${data_dir_prefix}/vox1_dev_txt.zip ]; then
+    if [ ! -f ${data_dir_prefix}/voxceleb1/vox1_dev_txt.zip ]; then
         wget -P ${data_dir_prefix} https://mm.kaist.ac.kr/datasets/voxceleb/data/vox1_dev_txt.zip
     else
         log "Voxceleb1 devset txt data exists. Skip download."
     fi
 
     # download VoxCeleb1 testset txt data
-    if [ ! -f ${data_dir_prefix}/vox1_test_txt.zip ]; then
+    if [ ! -f ${data_dir_prefix}/voxceleb1/vox1_test_txt.zip ]; then
         wget -P ${data_dir_prefix} https://mm.kaist.ac.kr/datasets/voxceleb/data/vox1_test_txt.zip
     else
         log "Voxceleb1 testset txt data exists. Skip download."
     fi
 
     # download VoxCeleb2 devset txt data
-    if [ ! -f ${data_dir_prefix}/vox2_dev_txt.zip ]; then
+    if [ ! -f ${data_dir_prefix}/voxceleb2/vox2_dev_txt.zip ]; then
         # -c for the case when download is incomplete
         # (to continue download when the script is ran again)
         wget -P ${data_dir_prefix} -c https://mm.kaist.ac.kr/datasets/voxceleb/data/vox2_dev_txt.zip
@@ -69,35 +69,44 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         log "Voxceleb2 devset txt data exists. Skip download."
     fi
 
-
+    # 밑에서 txt zip파일을 unzip하기 전에 이전에 생성됐던 txt/ 디렉토리가 있을 경우 먼저 지워야 함
     if [ -d ${data_dir_prefix}/txt ]; then
         rm -rf ${data_dir_prefix}/txt
     fi
 
+#==========================================================================<changed by jaehwan==========================================================================
     log "Extracting VoxCeleb1 test set text data."
-    unzip -q ${data_dir_prefix}/vox1_test_txt.zip -d ${data_dir_prefix}
+    # unzip -q ${data_dir_prefix}/vox1_test_txt.zip -d ${data_dir_prefix}
     if [ ! -d "${data_dir_prefix}/voxceleb1/test" ]; then
+        unzip -q ${data_dir_prefix}/vox1_test_txt.zip -d ${data_dir_prefix}
         mkdir -p ${data_dir_prefix}/voxceleb1/test
+        mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb1/test # added
     fi
-    mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb1/test
+    # mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb1/test
 
     log "Extracting VoxCeleb1 development set text data."
-    unzip -q ${data_dir_prefix}/vox1_dev_txt.zip -d ${data_dir_prefix}
+    # unzip -q ${data_dir_prefix}/vox1_dev_txt.zip -d ${data_dir_prefix}
     if [ ! -d ${data_dir_prefix}/voxceleb1/dev ]; then
+        unzip -q ${data_dir_prefix}/vox1_dev_txt.zip -d ${data_dir_prefix}
         mkdir -p ${data_dir_prefix}/voxceleb1/dev
+        mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb1/dev # added
     fi
-    mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb1/dev
+    # mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb1/dev
 
     log "Extracting VoxCeleb2 text data."
-    unzip -q ${data_dir_prefix}/vox2_dev_txt.zip -d ${data_dir_prefix}
+    # unzip -q ${data_dir_prefix}/vox2_dev_txt.zip -d ${data_dir_prefix}
     if [ ! -d ${data_dir_prefix}/voxceleb2/dev ]; then
+        unzip -q ${data_dir_prefix}/vox2_dev_txt.zip -d ${data_dir_prefix}
         mkdir -p ${data_dir_prefix}/voxceleb2/dev
+        mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb2/dev # added
    fi
-    mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb2/dev
+    # mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb2/dev
+#==========================================================================changed by jaehwan>==========================================================================
 
     log "Stage 1, DONE."
 fi
 
+#==========================================================================<changed by jaehwan==========================================================================
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     log "Stage 2: Convert text data to audio by crawling YouTube."
     if [ ! -d "${data_dir_prefix}/voxceleb1/test" ]; then
@@ -120,6 +129,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     fi
     log "Stage 2, DONE."
 fi
+#==========================================================================changed by jaehwan>==========================================================================
 
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
     log "Stage 3: Download Musan and RIR_NOISES for augmentation."
@@ -152,26 +162,30 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
 
     # make scp files
     for x in music noise speech; do
-        find ${data_dir_prefix}/musan/${x} -iname "*.wav" > ${data_dir_prefix}/musan_${x}.scp
+        # find ${data_dir_prefix}/musan/${x} -iname "*.wav" > ${data_dir_prefix}/musan_${x}.scp
+        find ${data_dir_prefix}/musan/${x} -iname "*.wav" > ${trg_dir}/musan_${x}.scp # added by jaehwan
     done
 
     # Use small and medium rooms, leaving out largerooms.
     # Similar setup to Kaldi and VoxCeleb_trainer.
-    find ${data_dir_prefix}/RIRS_NOISES/simulated_rirs/mediumroom -iname "*.wav" > ${data_dir_prefix}/rirs.scp
-    find ${data_dir_prefix}/RIRS_NOISES/simulated_rirs/smallroom -iname "*.wav" >> ${data_dir_prefix}/rirs.scp
+    # find ${data_dir_prefix}/RIRS_NOISES/simulated_rirs/mediumroom -iname "*.wav" > ${data_dir_prefix}/rirs.scp
+    find ${data_dir_prefix}/RIRS_NOISES/simulated_rirs/mediumroom -iname "*.wav" > ${trg_dir}/rirs.scp # added by jaehwan
+    # find ${data_dir_prefix}/RIRS_NOISES/simulated_rirs/smallroom -iname "*.wav" >> ${data_dir_prefix}/rirs.scp
+    find ${data_dir_prefix}/RIRS_NOISES/simulated_rirs/smallroom -iname "*.wav" >> ${trg_dir}/rirs.scp # added by jaehwan
     log "Stage 3, DONE."
 fi
 
+# wav파일을 직접 trg_dir에 옮기진 않음
 if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
     log "Stage 4, Change into kaldi-style feature."
     mkdir -p ${trg_dir}/voxceleb1_test
     mkdir -p ${trg_dir}/voxceleb1_dev
     mkdir -p ${trg_dir}/voxceleb2_dev
     mkdir -p ${trg_dir}/voxceleb2_test
-    python local/data_prep.py --src "${data_dir_prefix}/voxceleb1/test" --dst "${trg_dir}/voxceleb1_test"
-    python local/data_prep.py --src "${data_dir_prefix}/voxceleb1/dev" --dst "${trg_dir}/voxceleb1_dev"
-    python local/data_prep.py --src "${data_dir_prefix}/voxceleb2/dev" --dst "${trg_dir}/voxceleb2_dev"
-    python local/data_prep.py --src "${data_dir_prefix}/voxceleb2/test" --dst "${trg_dir}/voxceleb2_test"
+    python local/data_prep.py --src "${data_dir_prefix}/voxceleb1/test/wav" --dst "${trg_dir}/voxceleb1_test"
+    python local/data_prep.py --src "${data_dir_prefix}/voxceleb1/dev/wav" --dst "${trg_dir}/voxceleb1_dev"
+    python local/data_prep.py --src "${data_dir_prefix}/voxceleb2/dev/wav" --dst "${trg_dir}/voxceleb2_dev"
+    python local/data_prep.py --src "${data_dir_prefix}/voxceleb2/test/wav" --dst "${trg_dir}/voxceleb2_test"
 
     for f in wav.scp utt2spk spk2utt; do
         sort ${trg_dir}/voxceleb1_test/${f} -o ${trg_dir}/voxceleb1_test/${f}
