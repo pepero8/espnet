@@ -4,7 +4,8 @@ set -u
 set -o pipefail
 
 
-spk_config=conf/train_RawNet3.yaml
+# spk_config=conf/train_RawNet3.yaml
+spk_config=conf/tuning/train_ECAPA_mel_jhwan.yaml
 
 train_set="voxceleb12_devs"
 valid_set="voxceleb1_test"
