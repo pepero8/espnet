@@ -7,19 +7,20 @@ Thus, we measure open set equal error rate (EER) using unknown speakers by
 overriding validate_one_epoch.
 """
 
+import math
 from typing import Dict, Iterable
 
 import numpy as np
-import torch
-import torch.nn.functional as F
-import torch.optim
-from typeguard import typechecked
-
 from espnet2.torch_utils.device_funcs import to_device
 from espnet2.train.distributed_utils import DistributedOption
 from espnet2.train.reporter import SubReporter
 from espnet2.train.trainer import Trainer, TrainerOptions
 from espnet2.utils.eer import ComputeErrorRates, ComputeMinDcf, tuneThresholdfromScore
+from typeguard import typechecked
+
+import torch
+import torch.nn.functional as F
+import torch.optim
 
 if torch.distributed.is_available():
     from torch.distributed import ReduceOp
@@ -70,20 +71,14 @@ class SpkTrainer(Trainer):
                 task_token = batch["task_tokens"][0]
 
             assert isinstance(batch, dict), type(batch)
-            for _utt_id, _speech, _speech2 in zip(
-                utt_id, batch["speech"], batch["speech2"]
-            ):
+            for _utt_id, _speech, _speech2 in zip(utt_id, batch["speech"], batch["speech2"]):
                 _utt_id_1, _utt_id_2 = _utt_id.split("*")
                 if _utt_id_1 not in utt_id_list:
                     utt_id_list.append(_utt_id_1)
-                    speech_list.append(
-                        to_device(_speech, "cuda" if ngpu > 0 else "cpu")
-                    )
+                    speech_list.append(to_device(_speech, "cuda" if ngpu > 0 else "cpu"))
                 if _utt_id_2 not in utt_id_list:
                     utt_id_list.append(_utt_id_2)
-                    speech_list.append(
-                        to_device(_speech2, "cuda" if ngpu > 0 else "cpu")
-                    )
+                    speech_list.append(to_device(_speech2, "cuda" if ngpu > 0 else "cpu"))
 
         # extract speaker embeddings.
         n_utt = len(utt_id_list)
@@ -118,9 +113,7 @@ class SpkTrainer(Trainer):
 
         # calculate similarity scores
         for utt_id, batch in iterator:
-            batch["spk_labels"] = to_device(
-                batch["spk_labels"], "cuda" if ngpu > 0 else "cpu"
-            )
+            batch["spk_labels"] = to_device(batch["spk_labels"], "cuda" if ngpu > 0 else "cpu")
 
             if distributed:
                 torch.distributed.all_reduce(iterator_stop, ReduceOp.SUM)
@@ -131,6 +124,9 @@ class SpkTrainer(Trainer):
                 _utt_id_1, _utt_id_2 = _utt_id.split("*")
                 score = torch.cdist(spk_embd_dic[_utt_id_1], spk_embd_dic[_utt_id_2])
                 score = -1.0 * torch.mean(score)
+                # assert not math.isnan(
+                #     score
+                # ), f"utt_id_1 embedding: {spk_embd_dic[_utt_id_1]}, utt_id_1 embedding: {spk_embd_dic[_utt_id_2]}"  # added by jaehwan
                 scores.append(score.view(1))  # 0-dim to 1-dim tensor for cat
             labels.append(batch["spk_labels"])
 
@@ -145,9 +141,7 @@ class SpkTrainer(Trainer):
 
         if distributed:
             # get the number of trials assigned on each GPU
-            length = to_device(
-                torch.tensor([labels.size(0)], dtype=torch.int32), "cuda"
-            )
+            length = to_device(torch.tensor([labels.size(0)], dtype=torch.int32), "cuda")
             lengths_all = [
                 to_device(torch.zeros(1, dtype=torch.int32), "cuda")
                 for _ in range(torch.distributed.get_world_size())
@@ -155,22 +149,20 @@ class SpkTrainer(Trainer):
             torch.distributed.all_gather(lengths_all, length)
 
             scores_all = [
-                to_device(torch.zeros(i, dtype=torch.float32), "cuda")
-                for i in lengths_all
+                to_device(torch.zeros(i, dtype=torch.float32), "cuda") for i in lengths_all
             ]
             torch.distributed.all_gather(scores_all, scores)
             scores = torch.cat(scores_all)
 
-            labels_all = [
-                to_device(torch.zeros(i, dtype=torch.int32), "cuda")
-                for i in lengths_all
-            ]
+            labels_all = [to_device(torch.zeros(i, dtype=torch.int32), "cuda") for i in lengths_all]
             torch.distributed.all_gather(labels_all, labels)
             labels = torch.cat(labels_all)
             # rank = torch.distributed.get_rank()
             torch.distributed.barrier()
         scores = scores.detach().cpu().numpy()
         labels = labels.detach().cpu().numpy()
+
+        assert not np.isnan(scores).any(), f"scores: {scores}"  # added by jaehwan
 
         # calculate statistics in target and nontarget classes.
         n_trials = len(scores)
@@ -259,9 +251,7 @@ class SpkTrainer(Trainer):
                 task_token = batch["task_tokens"][0]
 
             assert isinstance(batch, dict), type(batch)
-            for _utt_id, _speech, _speech2 in zip(
-                utt_id, batch["speech"], batch["speech2"]
-            ):
+            for _utt_id, _speech, _speech2 in zip(utt_id, batch["speech"], batch["speech2"]):
                 _utt_id_1, _utt_id_2 = _utt_id.split("*")
                 if _utt_id_1 not in utt_id_whole_list:
                     utt_id_whole_list.append(_utt_id_1)
@@ -273,9 +263,7 @@ class SpkTrainer(Trainer):
                         speech_list = torch.stack(speech_list, dim=0)
                         org_shape = (speech_list.size(0), speech_list.size(1))
                         speech_list = speech_list.flatten(0, 1)
-                        speech_list = to_device(
-                            speech_list, "cuda" if ngpu > 0 else "cpu"
-                        )
+                        speech_list = to_device(speech_list, "cuda" if ngpu > 0 else "cpu")
                         if task_token is None:
                             task_tokens = None
                         else:
@@ -295,9 +283,7 @@ class SpkTrainer(Trainer):
 
                         for uid, _spk_embd in zip(utt_id_list, spk_embds):
                             if average:
-                                spk_embd_dic[uid] = (
-                                    _spk_embd.mean(0).detach().cpu().numpy()
-                                )
+                                spk_embd_dic[uid] = _spk_embd.mean(0).detach().cpu().numpy()
                             else:
                                 spk_embd_dic[uid] = _spk_embd.detach().cpu().numpy()
 
@@ -315,9 +301,7 @@ class SpkTrainer(Trainer):
                         speech_list = torch.stack(speech_list, dim=0)
                         org_shape = (speech_list.size(0), speech_list.size(1))
                         speech_list = speech_list.flatten(0, 1)
-                        speech_list = to_device(
-                            speech_list, "cuda" if ngpu > 0 else "cpu"
-                        )
+                        speech_list = to_device(speech_list, "cuda" if ngpu > 0 else "cpu")
                         if task_token is None:
                             task_tokens = None
                         else:
@@ -337,9 +321,7 @@ class SpkTrainer(Trainer):
 
                         for uid, _spk_embd in zip(utt_id_list, spk_embds):
                             if average:
-                                spk_embd_dic[uid] = (
-                                    _spk_embd.mean(0).detach().cpu().numpy()
-                                )
+                                spk_embd_dic[uid] = _spk_embd.mean(0).detach().cpu().numpy()
                             else:
                                 spk_embd_dic[uid] = _spk_embd.detach().cpu().numpy()
 
