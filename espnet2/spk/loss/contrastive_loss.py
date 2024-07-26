@@ -11,7 +11,7 @@ import torch.nn.functional as F
 class Contrastive(AbsLoss):
     """SimCLR contrastive loss
 
-    Paper:
+    Paper: "CONTRASTIVE SELF-SUPERVISED LEARNING FOR TEXT-INDEPENDENT SPEAKER VERIFICATION"
 
     args:
 
