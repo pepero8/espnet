@@ -1,3 +1,4 @@
+import math
 import sys
 from typing import List, Tuple
 
@@ -29,17 +30,30 @@ def main(args):
     n_trials = len(scores)
     scores_trg = []
     scores_nontrg = []
+    nan_scores = 0
     for _s, _l in zip(scores, labels):
+        if math.isnan(_s): # added by jaehwan
+            nan_scores += 1
+            continue
         if _l == 1:
             scores_trg.append(_s)
         elif _l == 0:
             scores_nontrg.append(_s)
         else:
             raise ValueError(f"{_l}, {type(_l)}")
+        
+    print(f"number of nan scores: {nan_scores}/{n_trials}") # added by jaehwan
+
     trg_mean = float(np.mean(scores_trg))
     trg_std = float(np.std(scores_trg))
     nontrg_mean = float(np.std(scores_nontrg))
     nontrg_std = float(np.std(scores_nontrg))
+
+    # remove nan scores and corresponding labels. added by jaehwan
+    scores_np = np.array(scores)
+    non_nan_indices = np.where(~np.isnan(scores_np))[0]
+    scores = [scores[i] for i in non_nan_indices]
+    labels = [labels[i] for i in non_nan_indices]
 
     # predictions, ground truth, and the false acceptance rates to calculate
     results = tuneThresholdfromScore(scores, labels, [1, 0.1])
