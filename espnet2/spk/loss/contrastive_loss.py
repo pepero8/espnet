@@ -17,13 +17,23 @@ class Contrastive(AbsLoss):
 
     """
 
-    def __init__(self, nout, temp: float = 0.5, **kwargs):
+    def __init__(
+        self,
+        nout,
+        temp: float = 0.5,
+        weight1: float = 0.3,
+        weight2: float = 0.3,
+        weight3: float = 0.3,
+        **kwargs,
+    ):
         super().__init__(nout)
         self.temp = temp
+        self.weight1 = weight1  # weight for spk
+        self.weight2 = weight2  # weight for pitch1
+        self.weight3 = weight3  # weight for pitch2
 
-    def forward(self, x, intensities, temp: float = 0.0, label=None):
-        if temp == 0.0:
-            temp = self.temp
+    def forward(self, x, intensities, weight, label=None):
+        temp = self.temp
 
         # x: (2N, nout)
         embeddings = x
@@ -69,4 +79,4 @@ class Contrastive(AbsLoss):
         # Compute the loss
         loss = F.cross_entropy(logits, labels)
 
-        return loss
+        return loss * weight

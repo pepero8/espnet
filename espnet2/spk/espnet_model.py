@@ -143,10 +143,10 @@ class ESPnetSpeakerModel(AbsESPnetModel):
         # 4. calculate loss
         # assert spk_labels is not None, "spk_labels is None, cannot compute loss" # removed for contrastive loss
 
-        loss_spk = self.loss(spk_embd_clean, None)
+        loss_spk = self.loss(spk_embd_clean, None, self.loss.weight1)
 
-        loss_pitch1 = self.loss(spk_embd_pitch1, shift_intensities1)
-        loss_pitch2 = self.loss(spk_embd_pitch2, shift_intensities2)
+        loss_pitch1 = self.loss(spk_embd_pitch1, shift_intensities1, self.loss.weight2)
+        loss_pitch2 = self.loss(spk_embd_pitch2, shift_intensities2, self.loss.weight3)
         loss_pitch = loss_pitch1 + loss_pitch2
 
         loss = loss_spk + loss_pitch
