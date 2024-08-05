@@ -53,15 +53,18 @@ loss_conf:
   # K: 3
   # mp: 0.06
   # k_top: 5
-  temp: 0.5
+  temp: 0.1
+  weight1: 0.3 # spk
+  weight2: 0.3 # pitch1
+  weight3: 0.3 # pitch2
 
 # SpecAugmentation
 specaug: None
 
 # Training related
-max_epoch: 40
+max_epoch: 8
 num_att_plot: 0
-num_workers: 3
+num_workers: 6
 cudnn_deterministic: False
 cudnn_benchmark: True
 drop_last_iter: True
@@ -74,7 +77,7 @@ batch_size: 128
 valid_batch_size: 40
 use_amp: True
 keep_nbest_models: 3
-grad_clip: 9999
+grad_clip: 1.0
 best_model_criterion:
   - - valid
     - eer
@@ -83,8 +86,8 @@ best_model_criterion:
 # Optimizer
 optim: adam
 optim_conf:
-  lr: 0.001
-  weight_decay: 0.00005
+  lr: 0.0001
+  weight_decay: 0.00001
   amsgrad: False
 
 # Scheduler
@@ -92,7 +95,7 @@ scheduler: CosineAnnealingWarmupRestarts
 scheduler_conf:
   first_cycle_steps: 71280 # equal to 10 epochs
   cycle_mult: 1.0
-  max_lr: 0.001
-  min_lr: 0.000005
+  max_lr: 0.0001
+  min_lr: 0.000001
   warmup_steps: 1000
   gamma: 0.75
