@@ -4,7 +4,6 @@ espnet2 spk 논문: [ESPnet-SPK: full pipeline speaker embedding toolkit with re
 
 [[공식 사이트]](https://espnet.github.io/espnet/installation.html)
 
-conda 환경 requirements파일:
 
 ### how to train
 Vox1, Vox2 데이터셋은 다운이 되어있다고 가정한다.
