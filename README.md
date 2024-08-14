@@ -4,6 +4,17 @@ espnet2 spk 논문: [ESPnet-SPK: full pipeline speaker embedding toolkit with re
 
 [[공식 사이트]](https://espnet.github.io/espnet/installation.html)
 
+### Installation
+conda environment: [environment.yaml](./environment.yaml)
+<br>
+위의 conda 환경 파일로 espnet 환경 생성
+```bash
+$ conda env create -n espnet -f environment.yaml
+```
+만약 오류가 뜰 경우 위의 공식 사이트의 Installation에 Step 2) - 3. Setup Python environment를 참고하여 환경을 만든 후, 4. Install ESPnet 을 진행
+
+
+
 
 ### how to train
 Vox1, Vox2 데이터셋은 다운이 되어있다고 가정한다.
