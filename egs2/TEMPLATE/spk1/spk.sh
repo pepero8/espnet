@@ -475,7 +475,7 @@ if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
     log "Stage 6: Speaker embedding extraction."
 
     infer_exp="${spk_exp}/inference"
-    _inference_dir=${data_feats}/${test_sets}
+    _inference_dir=${data_feats}/${test_sets} # dump/raw/voxceleb1_test
     if echo "${cuda_cmd}" | grep -e queue.pl -e queue-freegpu.pl &> /dev/null; then
         # SGE can't include "/" in a job name
         jobname="$(basename ${infer_exp})"
