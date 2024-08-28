@@ -1,8 +1,8 @@
 # embedding extraction
 num_workers: 4
 valid_batch_size: 5
-target_duration: 6.0  # seconds
-num_eval: 3
+target_duration: 1.0 # 6.0 # seconds
+num_eval: 1 # 3
 
 # score norm
 num_cohort_spk: 1211
@@ -12,5 +12,5 @@ adaptive_cohort_size: 500
 average_spk: false
 
 # quality measure function
-qmf_dur_thresh: 6
+qmf_dur_thresh: 1 # 6 # 이것도 target_duration에 맞춰야 하나?
 qmf_num_trial_per_condition: 5000
