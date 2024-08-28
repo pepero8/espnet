@@ -108,10 +108,14 @@ class ESPnetSpeakerModel(AbsESPnetModel):
         speech_1_pitch, shift_intensities1 = self.random_pitch_shift(speech_1)
         speech_2_pitch, shift_intensities2 = self.random_pitch_shift(speech_2)
 
+        # 0-2. Apply musan+RIR augmentation
+
         # 0-2. concat to make (2N, n_mel)
         speech_clean = torch.cat([speech_1, speech_2], dim=0)
-        speech_1_pitch = torch.cat([speech_1, speech_1_pitch], dim=0)
-        speech_2_pitch = torch.cat([speech_2, speech_2_pitch], dim=0)
+        speech_1_pitch = torch.cat([speech_1, speech_1_pitch], dim=0)  # pair with same context
+        speech_2_pitch = torch.cat([speech_2, speech_2_pitch], dim=0)  # pair with same context
+        # speech_1_pitch = torch.cat([speech_2, speech_1_pitch], dim=0)  # pair with different context
+        # speech_2_pitch = torch.cat([speech_1, speech_2_pitch], dim=0)  # pair with different context
 
         # 1. extract low-level feats (e.g., mel-spectrogram or MFCC)
         # Will do nothing for raw waveform-based models (e.g., RawNets)
@@ -176,6 +180,7 @@ class ESPnetSpeakerModel(AbsESPnetModel):
         # 2. apply augmentations
         if self.specaug is not None and self.training:
             feats, _ = self.specaug(feats, feat_lengths)
+            # print("^^7: specaug applied!")  # added by jaehwan
 
         # 3. normalize
         if self.normalize is not None:
