@@ -26,6 +26,8 @@ projector: rawnet3
 projector_conf:
   output_size: 192
 
+# use_preprocessor: False
+
 # Preprocessor
 preprocessor: spk
 preprocessor_conf:
@@ -62,7 +64,7 @@ loss_conf:
 specaug: None
 
 # Training related
-max_epoch: 8
+max_epoch: 56
 num_att_plot: 0
 num_workers: 6
 cudnn_deterministic: False
@@ -77,7 +79,7 @@ batch_size: 128
 valid_batch_size: 40
 use_amp: True
 keep_nbest_models: 3
-grad_clip: 1.0
+grad_clip: 1.0 # 9999
 best_model_criterion:
   - - valid
     - eer
@@ -87,13 +89,13 @@ best_model_criterion:
 optim: adam
 optim_conf:
   lr: 0.0001
-  weight_decay: 0.00001
+  weight_decay: 0.00005
   amsgrad: False
 
 # Scheduler
 scheduler: CosineAnnealingWarmupRestarts
 scheduler_conf:
-  first_cycle_steps: 71280 # equal to 10 epochs
+  first_cycle_steps: 71280 # 14256 # 17820 # 71280 # equal to 10 epochs
   cycle_mult: 1.0
   max_lr: 0.0001
   min_lr: 0.000001
