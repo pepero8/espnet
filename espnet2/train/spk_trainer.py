@@ -85,9 +85,11 @@ class SpkTrainer(Trainer):
         for ii in range(0, n_utt, bs):
             _utt_ids = utt_id_list[ii : ii + bs]
             _speechs = speech_list[ii : ii + bs]
-            _speechs = torch.stack(_speechs, dim=0)
-            org_shape = (_speechs.size(0), _speechs.size(1))
-            _speechs = _speechs.flatten(0, 1)
+            _speechs = torch.stack(
+                _speechs, dim=0
+            )  # (1, val_batch_size, num_samples) e.g. (1, 40, 48000)
+            org_shape = (_speechs.size(0), _speechs.size(1))  # (1, val_batch_size)
+            _speechs = _speechs.flatten(0, 1)  # (val_batch_size, num_samples)
             _speechs = to_device(_speechs, "cuda" if ngpu > 0 else "cpu")
 
             if task_token is None:
@@ -102,8 +104,8 @@ class SpkTrainer(Trainer):
                 extract_embd=True,
                 task_tokens=task_tokens,
             )
-            spk_embds = F.normalize(spk_embds, p=2, dim=1)
-            spk_embds = spk_embds.view(org_shape[0], org_shape[1], -1)
+            spk_embds = F.normalize(spk_embds, p=2, dim=1)  # (40, 192)
+            spk_embds = spk_embds.view(org_shape[0], org_shape[1], -1)  # (1, 40, 192)
 
             for _utt_id, _spk_embd in zip(_utt_ids, spk_embds):
                 spk_embd_dic[_utt_id] = _spk_embd
@@ -112,8 +114,10 @@ class SpkTrainer(Trainer):
         del speech_list
 
         # calculate similarity scores
-        for utt_id, batch in iterator:
-            batch["spk_labels"] = to_device(batch["spk_labels"], "cuda" if ngpu > 0 else "cpu")
+        for utt_id, batch in iterator:  # batch_size = val_batch_size?
+            batch["spk_labels"] = to_device(
+                batch["spk_labels"], "cuda" if ngpu > 0 else "cpu"
+            )  # if two speaker same -> 1, if different -> 0
 
             if distributed:
                 torch.distributed.all_reduce(iterator_stop, ReduceOp.SUM)
@@ -122,8 +126,10 @@ class SpkTrainer(Trainer):
 
             for _utt_id in utt_id:
                 _utt_id_1, _utt_id_2 = _utt_id.split("*")
-                score = torch.cdist(spk_embd_dic[_utt_id_1], spk_embd_dic[_utt_id_2])
-                score = -1.0 * torch.mean(score)
+                score = torch.cdist(
+                    spk_embd_dic[_utt_id_1], spk_embd_dic[_utt_id_2]
+                )  # calculate euclidean distance of two embedding. low score: high similarity, high score: low similarity
+                score = -1.0 * torch.mean(score)  # scalar similarity score
                 # assert not math.isnan(
                 #     score
                 # ), f"utt_id_1 embedding: {spk_embd_dic[_utt_id_1]}, utt_id_1 embedding: {spk_embd_dic[_utt_id_2]}"  # added by jaehwan
@@ -136,8 +142,8 @@ class SpkTrainer(Trainer):
                 torch.distributed.all_reduce(iterator_stop, ReduceOp.SUM)
         torch.cuda.empty_cache()
 
-        scores = torch.cat(scores).type(torch.float32)
-        labels = torch.cat(labels).type(torch.int32).flatten()
+        scores = torch.cat(scores).type(torch.float32)  # (num_trials,)
+        labels = torch.cat(labels).type(torch.int32).flatten()  # ()
 
         if distributed:
             # get the number of trials assigned on each GPU
@@ -177,7 +183,7 @@ class SpkTrainer(Trainer):
                 raise ValueError(f"{_l}, {type(_l)}")
         trg_mean = float(np.mean(scores_trg))
         trg_std = float(np.std(scores_trg))
-        nontrg_mean = float(np.std(scores_nontrg))
+        nontrg_mean = float(np.mean(scores_nontrg))
         nontrg_std = float(np.std(scores_nontrg))
 
         # exception for collect_stats.
@@ -186,7 +192,9 @@ class SpkTrainer(Trainer):
             return
 
         # predictions, ground truth, and the false acceptance rates to calculate
-        results = tuneThresholdfromScore(scores, labels, [1, 0.1])
+        results = tuneThresholdfromScore(
+            scores, labels, [1, 0.1]
+        )  # 1, 0.1: target false alarm rate
         eer = results[1]
         fnrs, fprs, thresholds = ComputeErrorRates(scores, labels)
 

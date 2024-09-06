@@ -3,7 +3,6 @@ import sys
 from typing import List, Tuple
 
 import numpy as np
-
 from espnet2.utils.eer import ComputeErrorRates, ComputeMinDcf, tuneThresholdfromScore
 
 
@@ -32,7 +31,7 @@ def main(args):
     scores_nontrg = []
     nan_scores = 0
     for _s, _l in zip(scores, labels):
-        if math.isnan(_s): # added by jaehwan
+        if math.isnan(_s):  # added by jaehwan
             nan_scores += 1
             continue
         if _l == 1:
@@ -41,12 +40,12 @@ def main(args):
             scores_nontrg.append(_s)
         else:
             raise ValueError(f"{_l}, {type(_l)}")
-        
-    print(f"number of nan scores: {nan_scores}/{n_trials}") # added by jaehwan
+
+    print(f"number of nan scores: {nan_scores}/{n_trials}")  # added by jaehwan
 
     trg_mean = float(np.mean(scores_trg))
     trg_std = float(np.std(scores_trg))
-    nontrg_mean = float(np.std(scores_nontrg))
+    nontrg_mean = float(np.mean(scores_nontrg))
     nontrg_std = float(np.std(scores_nontrg))
 
     # remove nan scores and corresponding labels. added by jaehwan
