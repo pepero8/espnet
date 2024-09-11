@@ -301,6 +301,13 @@ class SpeakerTask(AbsTask):
             frontend = None
             input_size = args.input_size
 
+        # added by jaehwan
+        if args.preprocessor == "spk":
+            # rirmusan = cls.build_preprocess_fn(args, True)
+            rirmusan = SpkPreprocessor(spk2utt=args.spk2utt, train=True, **args.preprocessor_conf)
+        else:
+            rirmusan = None
+
         if args.specaug is not None:
             specaug_class = specaug_choices.get_class(args.specaug)
             specaug = specaug_class(**args.specaug_conf)
@@ -331,6 +338,7 @@ class SpeakerTask(AbsTask):
         model = ESPnetSpeakerModel(
             frontend=frontend,
             specaug=specaug,
+            rirmusan=rirmusan,
             normalize=normalize,
             encoder=encoder,
             pooling=pooling,
