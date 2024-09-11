@@ -290,7 +290,7 @@ dependencies:
       - musdb==0.4.2
       - museval==0.4.1
       - nara-wpe==0.0.10
-      - nltk==3.8.2
+      - nltk
       - nnmnkwii==0.1.3
       - oauthlib==3.2.2
       - omegaconf==2.3.0
