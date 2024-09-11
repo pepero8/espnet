@@ -1,7 +1,8 @@
 # Copyright 2023 Jee-weon Jung
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
-from typing import Any, Dict, Optional, Tuple, Union
+import os
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import numpy as np
 import parselmouth
@@ -15,10 +16,15 @@ from espnet2.spk.pooling.abs_pooling import AbsPooling
 from espnet2.spk.projector.abs_projector import AbsProjector
 from espnet2.torch_utils.device_funcs import force_gatherable
 from espnet2.train.abs_espnet_model import AbsESPnetModel
+from espnet2.train.preprocessor import SpkPreprocessor
 from numpy.typing import NDArray
 from typeguard import typechecked
 
 import torch
+
+# this is for debugging. remove below 2 lines later
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 
 class ESPnetSpeakerModel(AbsESPnetModel):
@@ -47,6 +53,8 @@ class ESPnetSpeakerModel(AbsESPnetModel):
         self,
         frontend: Optional[AbsFrontend],
         specaug: Optional[AbsSpecAug],
+        # rirmusan: Optional[Callable[[str, Dict[str, np.array]], Dict[str, np.ndarray]]],
+        rirmusan: Optional[SpkPreprocessor],
         normalize: Optional[AbsNormalize],
         encoder: Optional[AbsEncoder],
         pooling: Optional[AbsPooling],
@@ -58,6 +66,7 @@ class ESPnetSpeakerModel(AbsESPnetModel):
 
         self.frontend = frontend
         self.specaug = specaug
+        self.rirmusan = rirmusan
         self.normalize = normalize
         self.encoder = encoder
         self.pooling = pooling
@@ -99,47 +108,94 @@ class ESPnetSpeakerModel(AbsESPnetModel):
             )
         batch_size = speech.shape[0]
 
-        # 0. split audio into two parts
-        half_length = speech.shape[1] // 2
-        speech_1 = speech[:, :half_length]  # (N, n_mel)
-        speech_2 = speech[:, half_length:]  # (N, n_mel)
+        # 1. split audio into two parts
+        # half_length = speech.shape[1] // 2
+        # speech_1 = speech[:, :half_length]  # (N, n_mel)
+        # speech_2 = speech[:, half_length:]  # (N, n_mel)
+        speech_1, speech_2 = self.random_crop(wav_tensor=speech)  # (256, 8000) each
 
-        # 0-1. pitch_shift audio
+        # 2. pitch_shift audio
         speech_1_pitch, shift_intensities1 = self.random_pitch_shift(speech_1)
         speech_2_pitch, shift_intensities2 = self.random_pitch_shift(speech_2)
 
-        # 0-2. Apply musan+RIR augmentation
-
-        # 0-2. concat to make (2N, n_mel)
-        speech_clean = torch.cat([speech_1, speech_2], dim=0)
-        speech_1_pitch = torch.cat([speech_1, speech_1_pitch], dim=0)  # pair with same context
-        speech_2_pitch = torch.cat([speech_2, speech_2_pitch], dim=0)  # pair with same context
-        # speech_1_pitch = torch.cat([speech_2, speech_1_pitch], dim=0)  # pair with different context
-        # speech_2_pitch = torch.cat([speech_1, speech_2_pitch], dim=0)  # pair with different context
-
-        # 1. extract low-level feats (e.g., mel-spectrogram or MFCC)
+        # 3. extract low-level feats (e.g., mel-spectrogram or MFCC)
         # Will do nothing for raw waveform-based models (e.g., RawNets)
-        feats, _ = self.extract_feats(speech, None)  # extract features + specaugment + normalize
-        feats_clean, _ = self.extract_feats(speech_clean, None)
-        feats_1_pitch, _ = self.extract_feats(speech_1_pitch, None)  # (2N, n_mel)
-        feats_2_pitch, _ = self.extract_feats(speech_2_pitch, None)  # (2N, n_mel)
+        feats, _ = self.extract_feats(
+            speech_1, None, False
+        )  # we only use first 0.5 segment at inference # extract features + normalize
+        feats_clean_1, _ = self.extract_feats(
+            speech_1, None, True
+        )  # rir/musan aug + extract feats + specaug + normalize
+        feats_clean_2, _ = self.extract_feats(
+            speech_2, None, True
+        )  # rir/musan aug + extract feats + specaug + normalize
+        feats_1_pitch, _ = self.extract_feats(speech_1_pitch, None, False)  # (N, n_mel)
+        feats_2_pitch, _ = self.extract_feats(speech_2_pitch, None, False)  # (N, n_mel)
 
+        # 4. extract frame-level feats
         frame_level_feats = self.encode_frame(feats)
-        frame_level_feats_clean = self.encode_frame(feats_clean)
+        frame_level_feats_clean_1 = self.encode_frame(feats_clean_1)
+        frame_level_feats_clean_2 = self.encode_frame(feats_clean_2)
         frame_level_feats_pitch1 = self.encode_frame(feats_1_pitch)
         frame_level_feats_pitch2 = self.encode_frame(feats_2_pitch)
 
-        # 2. aggregation into utterance-level
+        # 5. aggregation into utterance-level
         utt_level_feat = self.pooling(frame_level_feats, task_tokens)
-        utt_level_feat_clean = self.pooling(frame_level_feats_clean, task_tokens)
+        utt_level_feat_clean_1 = self.pooling(frame_level_feats_clean_1, task_tokens)
+        utt_level_feat_clean_2 = self.pooling(frame_level_feats_clean_2, task_tokens)
         utt_level_feat_pitch1 = self.pooling(frame_level_feats_pitch1, task_tokens)
         utt_level_feat_pitch2 = self.pooling(frame_level_feats_pitch2, task_tokens)
 
-        # 3. (optionally) go through further projection(s)
+        # 6. (optionally) go through further projection(s)
         spk_embd = self.project_spk_embd(utt_level_feat)
-        spk_embd_clean = self.project_spk_embd(utt_level_feat_clean)  # (2N, nout)
-        spk_embd_pitch1 = self.project_spk_embd(utt_level_feat_pitch1)  # (2N, nout)
-        spk_embd_pitch2 = self.project_spk_embd(utt_level_feat_pitch2)  # (2N, nout)
+        spk_embd_clean_1 = self.project_spk_embd(utt_level_feat_clean_1)  # (N, nout)
+        spk_embd_clean_2 = self.project_spk_embd(utt_level_feat_clean_2)  # (N, nout)
+        spk_embd_pitch1 = self.project_spk_embd(utt_level_feat_pitch1)  # (N, nout)
+        spk_embd_pitch2 = self.project_spk_embd(utt_level_feat_pitch2)  # (N, nout)
+
+        # 7. concat to make (2N, n_mel)
+        embd_clean = torch.cat([spk_embd_clean_1, spk_embd_clean_2], dim=0)
+        embd_pitch1 = torch.cat(
+            [spk_embd_clean_1, spk_embd_pitch1], dim=0
+        )  # pair with same context
+        embd_pitch2 = torch.cat(
+            [spk_embd_clean_2, spk_embd_pitch2], dim=0
+        )  # pair with same context
+        # speech_1_pitch = torch.cat([speech_2, speech_1_pitch], dim=0)  # pair with different context
+        # speech_2_pitch = torch.cat([speech_1, speech_2_pitch], dim=0)  # pair with different context
+
+        # # 0-2. concat to make (2N, n_mel)
+        # feats_clean = torch.cat([feats_clean_1, feats_clean_2], dim=0)
+        # feats_1_pitch = torch.cat([feats_clean_1, feats_1_pitch], dim=0)  # pair with same context
+        # feats_2_pitch = torch.cat([feats_clean_2, feats_2_pitch], dim=0)  # pair with same context
+        # # speech_1_pitch = torch.cat([speech_2, speech_1_pitch], dim=0)  # pair with different context
+        # # speech_2_pitch = torch.cat([speech_1, speech_2_pitch], dim=0)  # pair with different context
+
+        # # 1. extract low-level feats (e.g., mel-spectrogram or MFCC)
+        # # Will do nothing for raw waveform-based models (e.g., RawNets)
+        # feats, _ = self.extract_feats(
+        #     speech_1, None, False
+        # )  # we only use first 0.5 segment at inference # extract features + specaugment + normalize
+        # feats_clean, _ = self.extract_feats(speech_clean, None, True) # includes rir/musan augment
+        # feats_1_pitch, _ = self.extract_feats(speech_1_pitch, None, False)  # (2N, n_mel)
+        # feats_2_pitch, _ = self.extract_feats(speech_2_pitch, None, False)  # (2N, n_mel)
+
+        # frame_level_feats = self.encode_frame(feats)
+        # frame_level_feats_clean = self.encode_frame(feats_clean)
+        # frame_level_feats_pitch1 = self.encode_frame(feats_1_pitch)
+        # frame_level_feats_pitch2 = self.encode_frame(feats_2_pitch)
+
+        # # 2. aggregation into utterance-level
+        # utt_level_feat = self.pooling(frame_level_feats, task_tokens)
+        # utt_level_feat_clean = self.pooling(frame_level_feats_clean, task_tokens)
+        # utt_level_feat_pitch1 = self.pooling(frame_level_feats_pitch1, task_tokens)
+        # utt_level_feat_pitch2 = self.pooling(frame_level_feats_pitch2, task_tokens)
+
+        # # 3. (optionally) go through further projection(s)
+        # spk_embd = self.project_spk_embd(utt_level_feat)
+        # spk_embd_clean = self.project_spk_embd(utt_level_feat_clean)  # (2N, nout)
+        # spk_embd_pitch1 = self.project_spk_embd(utt_level_feat_pitch1)  # (2N, nout)
+        # spk_embd_pitch2 = self.project_spk_embd(utt_level_feat_pitch2)  # (2N, nout)
 
         if extract_embd:
             return spk_embd
@@ -147,13 +203,13 @@ class ESPnetSpeakerModel(AbsESPnetModel):
         # 4. calculate loss
         # assert spk_labels is not None, "spk_labels is None, cannot compute loss" # removed for contrastive loss
 
-        loss_spk = self.loss(spk_embd_clean, None, self.loss.weight1)
+        loss_spk = self.loss(embd_clean, None)
 
-        loss_pitch1 = self.loss(spk_embd_pitch1, shift_intensities1, self.loss.weight2)
-        loss_pitch2 = self.loss(spk_embd_pitch2, shift_intensities2, self.loss.weight3)
-        loss_pitch = loss_pitch1 + loss_pitch2
+        loss_pitch1 = self.loss(embd_pitch1, shift_intensities1)
+        loss_pitch2 = self.loss(embd_pitch2, shift_intensities2)
+        loss_pitch = self.loss.weight2 * loss_pitch1 + self.loss.weight3 * loss_pitch2
 
-        loss = loss_spk + loss_pitch
+        loss = self.loss.weight1 * loss_spk + loss_pitch
 
         stats = dict(loss=loss.detach())
 
@@ -161,14 +217,30 @@ class ESPnetSpeakerModel(AbsESPnetModel):
         return loss, stats, weight
 
     def extract_feats(
-        self, speech: torch.Tensor, speech_lengths: torch.Tensor
+        self, speech: torch.Tensor, speech_lengths: torch.Tensor, noiseaug: bool
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        # speech: (batch_size, num_samples)
         batch_size = speech.shape[0]
+        length = speech.shape[1]
         speech_lengths = (
             speech_lengths
             if speech_lengths is not None
             else torch.ones(batch_size).int() * speech.shape[1]
         )
+
+        # Apply musan+RIR augmentation
+        if self.rirmusan is not None and self.training and noiseaug:
+            device = speech.device
+            speech_aug = np.zeros((batch_size, length))
+            if self.rirmusan.noise_apply_prob > 0 or self.rirmusan.rir_apply_prob > 0:
+                for i, wav in enumerate(speech):
+                    wav_numpy = wav.detach().cpu().numpy()
+                    aug_wav_numpy = self.rirmusan._apply_data_augmentation(wav_numpy)
+                    # speech_aug[i] = torch.Tensor(aug_wav_numpy).to(device)
+                    speech_aug[i] = aug_wav_numpy
+
+                # speech = torch.Tensor(speech_aug).to(device)
+                speech = torch.tensor(speech_aug, dtype=speech.dtype, device=device)
 
         # 1. extract feats
         if self.frontend is not None:
@@ -177,7 +249,6 @@ class ESPnetSpeakerModel(AbsESPnetModel):
             feats = speech
             feat_lengths = None
 
-        # 2. apply augmentations
         if self.specaug is not None and self.training:
             feats, _ = self.specaug(feats, feat_lengths)
             # print("^^7: specaug applied!")  # added by jaehwan
@@ -217,6 +288,66 @@ class ESPnetSpeakerModel(AbsESPnetModel):
         return {"feats": feats}
 
     # ================================added by jaehwan================================
+    def random_crop(self, wav_tensor, sample_rate=16000, crop_length=0.5):
+        """
+        Randomly crop two non-overlapping 0.5-second sequences from each 3-second WAV tensor in a batch.
+
+        Args:
+        wav_tensor (torch.Tensor): Input WAV tensor of shape (batch, num_samples)
+        sample_rate (int): Sample rate of the audio (default: 16000)
+        crop_length (float): Length of each crop in seconds (default: 0.5)
+
+        Returns:
+        tuple: Two torch tensors, each containing 0.5-second crops for the entire batch
+        """
+        assert len(wav_tensor.shape) == 2, "Input tensor should have shape (batch, num_samples)"
+
+        batch_size, total_samples = wav_tensor.shape
+        crop_samples = int(crop_length * sample_rate)
+
+        # Ensure there is enough room for two non-overlapping segments
+        assert (
+            total_samples >= 2 * crop_samples
+        ), "Not enough samples for two non-overlapping segments."
+
+        # for i in range(batch_size):
+        #     # Randomly choose the start position for the first segment
+        #     start1 = torch.randint(0, total_samples - 2 * crop_samples, (1,)).item()
+        #     end1 = start1 + crop_samples
+
+        #     # Randomly choose the start position for the second segment after the first segment ends
+        #     start2 = torch.randint(end1, total_samples - crop_samples, (1,)).item()
+        #     end2 = start2 + crop_samples
+
+        #     # Extract the two non-overlapping segments
+        #     segment1 = wav_tensor[i, start1:end1]
+        #     segment2 = wav_tensor[i, start2:end2]
+
+        possible_starts = total_samples - 2 * crop_samples + 1
+        start1 = torch.randint(0, possible_starts, (batch_size,))
+        start2 = torch.randint(crop_samples, total_samples - crop_samples + 1, (batch_size,))
+
+        # Ensure start2 is always after start1 + crop_samples
+        start2 = torch.where(
+            start2 <= start1 + crop_samples,
+            start1
+            + crop_samples
+            + torch.randint(0, total_samples - 3 * crop_samples, (batch_size,)),
+            start2,
+        )
+        start2 = torch.where(
+            start2 > (total_samples - crop_samples), total_samples - crop_samples, start2
+        )
+
+        batch_indices = torch.arange(batch_size).unsqueeze(1)
+        crop_indices = torch.arange(crop_samples).unsqueeze(0)
+
+        crop1 = wav_tensor[batch_indices, start1.unsqueeze(1) + crop_indices]
+        crop2 = wav_tensor[batch_indices, start2.unsqueeze(1) + crop_indices]
+
+        return crop1, crop2
+
+    # ================================added by jaehwan================================
     def random_pitch_shift(
         self,
         audio: torch.Tensor,
@@ -239,13 +370,13 @@ class ESPnetSpeakerModel(AbsESPnetModel):
         # n_steps = np.random.normal(
         #     size=(batch_size,)
         # ).astype(np.int32)  # Number of steps to shift the pitch. Positive values increase pitch, negative values decrease pitch.
-        n_steps_float = np.random.uniform(size=(batch_size,), low=0.1, high=1.0)
+        n_steps_float = np.random.uniform(size=(batch_size,), low=-1.0, high=1.0)
         n_steps_int = (n_steps_float * 100).astype(int)
 
         for i in range(batch_size):
             wav = audio[i]
 
-            # jio
+            # jio's implement
             wav_shifted = self.change_pitch(
                 wav.detach().cpu().numpy(),
                 sr=16000,
@@ -259,7 +390,7 @@ class ESPnetSpeakerModel(AbsESPnetModel):
 
         pitch_shifted_audio = torch.stack(pitch_shifted_audio)
 
-        return pitch_shifted_audio, n_steps_float
+        return pitch_shifted_audio, np.abs(n_steps_float)
 
     # ================================added by jaehwan================================
     def change_pitch(
