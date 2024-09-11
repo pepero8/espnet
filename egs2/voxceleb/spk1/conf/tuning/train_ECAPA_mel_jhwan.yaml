@@ -2,7 +2,7 @@
 
 # Frontend
 frontend: melspec_torch
-frontend_conf:
+frontend_conf: # dictionary type
   preemp: true
   n_fft: 512
   log: true
@@ -31,15 +31,15 @@ projector_conf:
 # Preprocessor
 preprocessor: spk
 preprocessor_conf:
-  target_duration: 1 # seconds
+  target_duration: 3 # seconds
   sample_rate: 16000
-  num_eval: 5
-  noise_apply_prob: 0.0
+  num_eval: 5 # evaluation할 때 자르는 segment 개수
+  noise_apply_prob: 1.0
   noise_info:
     - [1.0, "dump/raw/musan_speech.scp", [4, 7], [13, 20]]
     - [1.0, "dump/raw/musan_noise.scp", [1, 1], [0, 15]]
     - [1.0, "dump/raw/musan_music.scp", [1, 1], [5, 15]]
-  rir_apply_prob: 0.0
+  rir_apply_prob: 1.0
   rir_scp: dump/raw/rirs.scp
 
 # Model conf
@@ -61,10 +61,13 @@ loss_conf:
   weight3: 0.3 # pitch2
 
 # SpecAugmentation
-specaug: None
+specaug: specaug
+specaug_conf:
+  time_warp_window: 3
+  time_mask_width_ratio_range: [0.0, 0.2]
 
 # Training related
-max_epoch: 56
+max_epoch: 80
 num_att_plot: 0
 num_workers: 6
 cudnn_deterministic: False
@@ -75,9 +78,10 @@ iterator_type: sequence
 valid_iterator_type: sequence
 shuffle_within_batch: False
 log_interval: 100
-batch_size: 128
+batch_type: unsorted
+batch_size: 256
 valid_batch_size: 40
-use_amp: True
+use_amp: True # automatic mixed precision training
 keep_nbest_models: 3
 grad_clip: 1.0 # 9999
 best_model_criterion:
@@ -95,9 +99,9 @@ optim_conf:
 # Scheduler
 scheduler: CosineAnnealingWarmupRestarts
 scheduler_conf:
-  first_cycle_steps: 71280 # 14256 # 17820 # 71280 # equal to 10 epochs
+  first_cycle_steps: 24940 # 5800 # equal to 10 epochs # 24940 # equal to 43 epochs # 14256 # 17820 # 71280 # equal to 10 epochs
   cycle_mult: 1.0
   max_lr: 0.0001
-  min_lr: 0.000001
+  min_lr: 0.00001 # 0.000001
   warmup_steps: 1000
-  gamma: 0.75
+  gamma: 0.75 # decrease rate of max learning rate by cycle

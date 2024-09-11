@@ -10,7 +10,7 @@ spk_config=conf/tuning/train_ECAPA_mel_jhwan.yaml
 # train_set="voxceleb12_devs"
 train_set="voxceleb1_dev"
 valid_set="voxceleb1_test"
-cohort_set="voxceleb2_test"
+cohort_set="voxceleb1_test"
 test_sets="voxceleb1_test"
 feats_type="raw"
 
