@@ -32,7 +32,7 @@ class Contrastive(AbsLoss):
         self.weight2 = weight2  # weight for pitch1
         self.weight3 = weight3  # weight for pitch2
 
-    def forward(self, x, intensities, weight, label=None):
+    def forward(self, x, intensities, label=None):
         temp = self.temp
 
         # x: (2N, nout)
@@ -79,4 +79,4 @@ class Contrastive(AbsLoss):
         # Compute the loss
         loss = F.cross_entropy(logits, labels)
 
-        return loss * weight
+        return loss
