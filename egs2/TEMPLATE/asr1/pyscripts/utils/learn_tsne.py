@@ -32,7 +32,7 @@ def load_embeddings(embd_dir: str) -> dict:
 
 
 def main(args):
-    reducer = umap.UMAP()
+    # reducer = umap.UMAP()
 
     embd_dir = args[0]
     # trial_label = args[1]
@@ -69,9 +69,11 @@ def main(args):
     # embeddings = np.array([embedding[0] for embedding in embd_dic.values()])
     print(f"filtered embedding shape: {embeddings.shape}")
 
-    # tsne = TSNE(n_components=2, random_state=42)
-    # tsne_results = tsne.fit_transform(embeddings)
-    umap_results = reducer.fit_transform(embeddings)
+    n_samples = embeddings.shape[0]
+    perplexity = min(n_samples - 1, 30)
+    tsne = TSNE(n_components=2, random_state=42, perplexity=perplexity)
+    tsne_results = tsne.fit_transform(embeddings)
+    # umap_results = reducer.fit_transform(embeddings)
 
     unique_ids = list(set(ids))
     print(f"total speakers: {len(unique_ids)}")
@@ -99,8 +101,18 @@ def main(args):
     plt.figure(figsize=(12, 10))
     for i, id in enumerate(ids):
         color = id_to_color[id]
-        plt.scatter(umap_results[i, 0], umap_results[i, 1], color=color)
-    plt.title("UMAP visualization")
+        # plt.scatter(umap_results[i, 0], umap_results[i, 1], color=color)
+        # for i, result in enumerate(tsne_results):
+        # plt.scatter(tsne_results[i, 0], tsne_results[i, 1])
+        plt.scatter(tsne_results[i, 0], tsne_results[i, 1], color=color)
+    # for i, (speaker, embedding) in enumerate(embd_dic.items()):
+    #     plt.scatter(tsne_results[i, 0], tsne_results[i, 1], label=speaker)
+    # plt.scatter(tsne_results[i, 0], tsne_results[i, 1])
+    # plt.annotate(speaker, (tsne_results[i, 0], tsne_results[i, 1]))
+
+    # plt.legend()
+    # plt.title("UMAP visualization")
+    plt.title("TSNE visualization")
     plt.legend(
         handles=legend_elements,
         title="Speaker IDs",
@@ -118,8 +130,12 @@ def main(args):
 
     print("Successfully done")
 
+    # with open(out_dir, "w") as f:
+    #     pass
+    # umap 이미지 저장
+
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
 
-# python pyscripts/utils/learn_umap.py ./voxceleb1_test_embeddings.npz ./umap_test.png
+# python pyscripts/utils/learn_tsne.py ./voxceleb1_test_embeddings.npz ./tsne_test.png

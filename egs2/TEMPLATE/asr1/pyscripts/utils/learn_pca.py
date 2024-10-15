@@ -6,13 +6,9 @@ from collections import OrderedDict
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import umap
-from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 
 import torch
-
-# def is_valid_embedding(embedding):
-#     return not np.isnan(embedding).any()
 
 
 def extract_id(label):
@@ -26,57 +22,42 @@ def load_embeddings(embd_dir: str) -> dict:
     for k, v in embd_dic.items():
         if len(v.shape) == 1:
             v = v[None, :]
-        embd_dic2[k] = torch.nn.functional.normalize(torch.from_numpy(v), p=2, dim=1).numpy()
-
+        embd_dic2[k] = torch.nn.functional.normalize(
+            torch.from_numpy(v), p=2, dim=1
+        ).numpy()
     return embd_dic2
 
 
 def main(args):
-    reducer = umap.UMAP()
-
     embd_dir = args[0]
-    # trial_label = args[1]
-    out_dir = args[1]  # 이미지가 저장될 곳
+    out_dir = args[1]
 
     embd_dic = load_embeddings(embd_dir)
 
-    print(f"Number of keys: {len(embd_dic)}")  # 4708
+    print(f"Number of keys: {len(embd_dic)}")
 
-    embeddings_for_umap = []
+    embeddings_for_pca = []
     ids = []
     for label, embedding in embd_dic.items():
         for embed in embedding:
             # if not np.isnan(embedding[0]).any():
-            # embeddings_for_umap.append(embedding[0])
-            embeddings_for_umap.append(embed)
+            # embeddings_for_pca.append(embedding[0])
+            embeddings_for_pca.append(embed)
             ids.append(extract_id(label))
 
-    embeddings = np.array(embeddings_for_umap)
-
-    # embd_dic = {key: value for key, value in embd_dic.items() if not np.isnan(value).any()}
-
-    # for speaker, embedding in embd_dic.items():
-    #     if is_valid_embedding(embedding[0]):
-    #         valid_embeddings.append(embedding[0])
-    #         valid_speakers.append(speaker)
-    #     else:
-    #         invalid_speakers.append(speaker)
-
-    # embeddings = np.array(
-    #     [embedding[0] for embedding in embd_dic.values() if is_valid_embedding(embedding[0])]
-    # )
-
-    # embeddings = np.array([embedding[0] for embedding in embd_dic.values()])
+    embeddings = np.array(embeddings_for_pca)
     print(f"filtered embedding shape: {embeddings.shape}")
 
-    # tsne = TSNE(n_components=2, random_state=42)
-    # tsne_results = tsne.fit_transform(embeddings)
-    umap_results = reducer.fit_transform(embeddings)
+    # Use PCA instead of t-SNE
+    pca = PCA(n_components=2, random_state=42)
+    pca_results = pca.fit_transform(embeddings)
 
     unique_ids = list(set(ids))
     print(f"total speakers: {len(unique_ids)}")
     color_map = plt.cm.get_cmap("tab20")
-    id_to_color = {id: color_map(i / len(unique_ids)) for i, id in enumerate(unique_ids)}
+    id_to_color = {
+        id: color_map(i / len(unique_ids)) for i, id in enumerate(unique_ids)
+    }
 
     legend_elements = []
     max_legend_items = 20  # Adjust this number to control legend size
@@ -99,8 +80,11 @@ def main(args):
     plt.figure(figsize=(12, 10))
     for i, id in enumerate(ids):
         color = id_to_color[id]
-        plt.scatter(umap_results[i, 0], umap_results[i, 1], color=color)
-    plt.title("UMAP visualization")
+        plt.scatter(pca_results[i, 0], pca_results[i, 1], color=color)
+
+    plt.title("PCA visualization")
+    plt.xlabel(f"PC1 ({pca.explained_variance_ratio_[0]:.2%})")
+    plt.ylabel(f"PC2 ({pca.explained_variance_ratio_[1]:.2%})")
     plt.legend(
         handles=legend_elements,
         title="Speaker IDs",
@@ -122,4 +106,4 @@ def main(args):
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
 
-# python pyscripts/utils/learn_umap.py ./voxceleb1_test_embeddings.npz ./umap_test.png
+# Usage: python pyscripts/utils/learn_pca.py ./voxceleb1_test_embeddings.npz ./pca_test.png
