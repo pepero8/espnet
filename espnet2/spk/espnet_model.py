@@ -22,10 +22,6 @@ from typeguard import typechecked
 
 import torch
 
-# this is for debugging. remove below 2 lines later
-os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-
 
 class ESPnetSpeakerModel(AbsESPnetModel):
     """Speaker embedding extraction model.

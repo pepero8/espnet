@@ -56,9 +56,9 @@ loss_conf:
   # mp: 0.06
   # k_top: 5
   temp: 0.1
-  weight1: 0.3 # spk
-  weight2: 0.3 # pitch1
-  weight3: 0.3 # pitch2
+  weight1: 0.8 # spk
+  weight2: 0.1 # pitch1
+  weight3: 0.1 # pitch2
 
 # SpecAugmentation
 specaug: specaug
@@ -69,7 +69,7 @@ specaug_conf:
 # Training related
 max_epoch: 80
 num_att_plot: 0
-num_workers: 6
+num_workers: 3
 cudnn_deterministic: False
 cudnn_benchmark: True
 drop_last_iter: True

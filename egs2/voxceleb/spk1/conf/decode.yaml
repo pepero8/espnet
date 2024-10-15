@@ -12,5 +12,5 @@ adaptive_cohort_size: 500
 average_spk: false
 
 # quality measure function
-qmf_dur_thresh: 3 # 6 # 이것도 target_duration에 맞춰야 하나?
+qmf_dur_thresh: 6
 qmf_num_trial_per_condition: 5000
