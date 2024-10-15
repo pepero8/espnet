@@ -4,19 +4,29 @@ espnet2 spk 논문: [ESPnet-SPK: full pipeline speaker embedding toolkit with re
 
 [[공식 사이트]](https://espnet.github.io/espnet/installation.html)
 
-### Installation
+## Installation
+Requirements: g++, nvcc
+
+### conda로 환경 생성 & espnet 설치
 conda environment: [environment.yaml](./environment.yaml)
 <br>
 위의 conda 환경 파일로 espnet 환경 생성
 ```bash
 $ conda env create -n espnet -f environment.yaml
 ```
+이후 espnet/tools로 이동, 다음을 실행
+```
+$ ./setup_anaconda.sh <conda_path> espnet 3.8 # conda_path에 conda 설치 경로 넣기
+$ conda activate espnet
+$ cd ..
+$ python3 -m pip install -e "..[train, recipe]"
+```
 만약 오류가 뜰 경우 위의 공식 사이트의 Installation에 Step 2) - 3. Setup Python environment를 참고하여 환경을 만든 후, 4. Install ESPnet 을 진행
 
 
 
 
-### how to train
+## how to train
 Vox1, Vox2 데이터셋은 다운이 되어있다고 가정한다.
 
 0. Vox1, Vox2 데이터셋 경로는 각각 voxceleb1/, voxceleb2/ 하위에 위치해 있어야 한다.
@@ -38,7 +48,8 @@ Vox1, Vox2 데이터셋은 다운이 되어있다고 가정한다.
 
     이후 다음을 실행(데이터셋 준비).
     ```bash
-    $ ./local/data.sh --stage 4
+    $ wget -P ${data_dir_prefix} https://www.robots.ox.ac.uk/~vgg/data/voxceleb/meta/veri_test.txt # Vox1-O eval txt 파일 다운
+    $ ./local/data.sh --stage 3
     ```
 
 3. 다음을 실행(모델 훈련). 이후 exp/spk_train_ECAPA_mel_jhwan_raw 폴더가 생기고 여기에 train log랑 checkpoint, 훈련 결과 등이 저장된다.
@@ -51,7 +62,7 @@ Vox1, Vox2 데이터셋은 다운이 되어있다고 가정한다.
     $ ./run.sh --spk_config conf/tuning/train_ECAPA_mel_jhwan.yaml --stage 5 --stop-stage 5 --speed_perturb_factors "" --ngpu 1
     ```
 
-### 주요 파일:
+## 주요 파일:
 
 - ```egs2/voxceleb/spk1/db.sh```: 데이터셋 경로 파일
 
