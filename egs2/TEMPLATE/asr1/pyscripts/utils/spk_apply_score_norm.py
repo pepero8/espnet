@@ -2,10 +2,10 @@ import sys
 from collections import OrderedDict
 
 import numpy as np
-import torch
 import yaml
-
 from espnet2.torch_utils.device_funcs import to_device
+
+import torch
 
 
 def load_embeddings(embd_dir: str) -> dict:
@@ -14,9 +14,7 @@ def load_embeddings(embd_dir: str) -> dict:
     for k, v in embd_dic.items():
         if len(v.shape) == 1:
             v = v[None, :]
-        embd_dic2[k] = torch.nn.functional.normalize(
-            torch.from_numpy(v), p=2, dim=1
-        ).squeeze()
+        embd_dic2[k] = torch.nn.functional.normalize(torch.from_numpy(v), p=2, dim=1).squeeze()
 
     return embd_dic2
 
@@ -45,9 +43,7 @@ def main(args):
         org_scores = f.readlines()
     with open(utt2spk) as f:
         utt2spk = f.readlines()
-    utt2spk = {
-        line.strip().split(" ")[0]: line.strip().split(" ")[1] for line in utt2spk
-    }
+    utt2spk = {line.strip().split(" ")[0]: line.strip().split(" ")[1] for line in utt2spk}
     org_embds = load_embeddings(org_embds)
     cohort_embds = load_embeddings(cohort_embds)
 
@@ -82,31 +78,39 @@ def main(args):
 
     with open(out_dir, "w") as f:
         for score in org_scores:
-            utts, score, lab = score.strip().split(" ")
-            enr, tst = utts.split("*")
-            enr = to_device(org_embds[enr], "cuda" if ngpu > 0 else "cpu")
-            tst = to_device(org_embds[tst], "cuda" if ngpu > 0 else "cpu")
-            score = float(score)
+            try:  # added by jaehwan
+                utts, score, lab = score.strip().split(" ")
+                enr, tst = utts.split("*")
+                enr = to_device(org_embds[enr], "cuda" if ngpu > 0 else "cpu")
+                tst = to_device(org_embds[tst], "cuda" if ngpu > 0 else "cpu")
+                score = float(score)
 
-            e_c = -1.0 * torch.cdist(enr, cohort_embds).mean(0)
-            e_c = torch.topk(e_c, k=cfg["adaptive_cohort_size"])[0]
+                if enr.ndim == 1:
+                    enr = enr.unsqueeze(0)
+                if tst.ndim == 1:
+                    tst = tst.unsqueeze(0)
 
-            e_c_m = torch.mean(e_c)
-            e_c_s = torch.std(e_c)
+                e_c = -1.0 * torch.cdist(enr, cohort_embds).mean(0)
+                e_c = torch.topk(e_c, k=cfg["adaptive_cohort_size"])[0]
 
-            t_c = -1.0 * torch.cdist(tst, cohort_embds).mean(0)
-            t_c = torch.topk(t_c, k=cfg["adaptive_cohort_size"])[0]
+                e_c_m = torch.mean(e_c)
+                e_c_s = torch.std(e_c)
 
-            t_c_m = torch.mean(t_c)
-            t_c_s = torch.std(t_c)
+                t_c = -1.0 * torch.cdist(tst, cohort_embds).mean(0)
+                t_c = torch.topk(t_c, k=cfg["adaptive_cohort_size"])[0]
 
-            normscore_e = (score - e_c_m) / e_c_s
-            normscore_t = (score - t_c_m) / t_c_s
+                t_c_m = torch.mean(t_c)
+                t_c_s = torch.std(t_c)
 
-            newscore = (normscore_e + normscore_t) / 2
-            newscore = newscore.item()
+                normscore_e = (score - e_c_m) / e_c_s
+                normscore_t = (score - t_c_m) / t_c_s
 
-            f.write(f"{utts} {newscore} {lab}\n")
+                newscore = (normscore_e + normscore_t) / 2
+                newscore = newscore.item()
+
+                f.write(f"{utts} {newscore} {lab}\n")
+            except KeyError:  # added by jaehwan
+                continue
 
 
 if __name__ == "__main__":

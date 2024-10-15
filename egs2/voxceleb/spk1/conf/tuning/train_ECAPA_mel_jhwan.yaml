@@ -36,7 +36,7 @@ preprocessor_conf:
   num_eval: 5 # evaluation할 때 자르는 segment 개수
   noise_apply_prob: 1.0
   noise_info:
-    - [1.0, "dump/raw/musan_speech.scp", [4, 7], [13, 20]]
+    - [1.0, "dump/raw/musan_speech.scp", [1, 1], [13, 20]] # [4, 7]: number of noises to mix(min=4, max=7), [13, 20]: noise dB range
     - [1.0, "dump/raw/musan_noise.scp", [1, 1], [0, 15]]
     - [1.0, "dump/raw/musan_music.scp", [1, 1], [5, 15]]
   rir_apply_prob: 1.0
@@ -63,6 +63,7 @@ loss_conf:
 # SpecAugmentation
 specaug: specaug
 specaug_conf:
+  apply_freq_mask: False
   time_warp_window: 3
   time_mask_width_ratio_range: [0.0, 0.2]
 
@@ -74,16 +75,19 @@ cudnn_deterministic: False
 cudnn_benchmark: True
 drop_last_iter: True
 # iterator_type: category
-iterator_type: sequence
+iterator_type: sequence 
+# iterator_type: category # Sampler that keeps equally distributed categories (i.e., classes) within each minibatch.
 valid_iterator_type: sequence
 shuffle_within_batch: False
 log_interval: 100
 batch_type: unsorted
+# batch_type: folded # variable batch size in order to keep size of batches constant. If mini-batch has really long utterance, the batch size gets smaller. It requires shape file.
 batch_size: 256
 valid_batch_size: 40
 use_amp: True # automatic mixed precision training
 keep_nbest_models: 3
 grad_clip: 1.0 # 9999
+# unused_parameters: True # for DistributedDataParallel. Finds unused_parameters. But speed can slow down.
 best_model_criterion:
   - - valid
     - eer

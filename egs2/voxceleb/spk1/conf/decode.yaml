@@ -1,6 +1,7 @@
 # embedding extraction
 num_workers: 4
 valid_batch_size: 5
+batch_type: unsorted
 target_duration: 3 # 6.0 # seconds
 num_eval: 3 # 1 # 3
 

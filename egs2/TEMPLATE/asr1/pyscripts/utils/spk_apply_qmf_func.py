@@ -25,6 +25,15 @@ def generate_data(utt2dur, scores, embed_dic):
         # add embedding norms
         embed1 = embed_dic[utt1]
         embed2 = embed_dic[utt2]
+
+        # print(embed1.shape)
+        # print(embed2.shape)
+
+        if embed1.ndim == 1:  # added by jaehwan
+            embed1 = np.expand_dims(embed1, axis=0)
+        if embed2.ndim == 1:  # added by jaehwan
+            embed2 = np.expand_dims(embed2, axis=0)
+
         l1norms = np.mean(np.linalg.norm(embed1, ord=1, axis=1))
         data_cur.append(l1norms)
         l1norms = np.mean(np.linalg.norm(embed2, ord=1, axis=1))
@@ -58,15 +67,13 @@ def load_values(trial, trial2, scores, embed_dic):
     with open(trial) as f:
         lines = f.readlines()
     tmp_dic = {
-        line.strip().split(" ")[0].split("*")[0]: line.strip().split(" ")[1]
-        for line in lines
+        line.strip().split(" ")[0].split("*")[0]: line.strip().split(" ")[1] for line in lines
     }
     utt2dir.update(tmp_dic)
     with open(trial2) as f:
         lines = f.readlines()
     tmp_dic = {
-        line.strip().split(" ")[0].split("*")[1]: line.strip().split(" ")[1]
-        for line in lines
+        line.strip().split(" ")[0].split("*")[1]: line.strip().split(" ")[1] for line in lines
     }
     utt2dir.update(tmp_dic)
 
@@ -97,9 +104,7 @@ def main(args):
         qmf_train_scores,
         qmf_train_embed_dic,
     )
-    train_data, train_labels = generate_data(
-        qmf_utt2dir, qmf_train_scores, qmf_train_embed_dic
-    )
+    train_data, train_labels = generate_data(qmf_utt2dir, qmf_train_scores, qmf_train_embed_dic)
 
     test_utt2dir, test_scores, test_embed_dic = load_values(
         test_trial,

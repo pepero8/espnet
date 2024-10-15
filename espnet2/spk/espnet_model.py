@@ -77,7 +77,9 @@ class ESPnetSpeakerModel(AbsESPnetModel):
         task_tokens: Optional[torch.Tensor] = None,
         extract_embd: bool = False,
         **kwargs,
-    ) -> Union[Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor], torch.Tensor]:
+    ) -> Union[
+        Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor], torch.Tensor
+    ]:
         """Feed-forward through encoder layers and aggregate into utterance-level
 
         feature.
@@ -92,6 +94,56 @@ class ESPnetSpeakerModel(AbsESPnetModel):
             task_tokens: (Batch, )
             task tokens used in case of token-based trainings
         """
+
+        # validation/inference
+        if extract_embd:
+            batch_size = speech.shape[0]
+            speech_length = speech.shape[1]  # only for frame_level extraction
+            sample_rate = 16000  # Assuming 16kHz sample rate
+            segment_length = int(0.5 * sample_rate)  # 0.5 seconds
+            # total_segments = 6
+            total_segments = (
+                float(speech_length) / 16000.0
+            ) // 0.125  # only for frame_level extraction
+            print(
+                "Total segments: ", int(total_segments)
+            )  # only for frame_level extraction
+
+            # Initialize tensor to store embeddings for each segment
+            all_embeddings = []
+
+            # Process each 0.5s segment
+            for i in range(int(total_segments)):
+                # start_idx = i * segment_length
+                start_idx = i * (segment_length // 4)  # only for frame_level extraction
+                end_idx = start_idx + segment_length
+
+                # Extract current segment
+                segment = speech[:, start_idx:end_idx]
+
+                # Extract features
+                feats, _ = self.extract_feats(segment, None, False)
+
+                # Extract frame-level features
+                frame_level_feats = self.encode_frame(feats)
+
+                # Aggregate into utterance-level
+                utt_level_feat = self.pooling(frame_level_feats, task_tokens)
+
+                # Project to speaker embedding
+                segment_embd = self.project_spk_embd(utt_level_feat)
+
+                all_embeddings.append(segment_embd)
+
+            # Stack all embeddings and average them
+            all_embeddings = torch.stack(
+                all_embeddings, dim=1
+            )  # (batch_size, total_segments, embedding_dim)
+            # final_embedding = torch.mean(all_embeddings, dim=1)  # (batch_size, embedding_dim)
+
+            # return final_embedding
+            return all_embeddings  # only for frame_level extraction
+
         if spk_labels is not None:
             assert speech.shape[0] == spk_labels.shape[0], (
                 speech.shape,
@@ -116,9 +168,9 @@ class ESPnetSpeakerModel(AbsESPnetModel):
 
         # 3. extract low-level feats (e.g., mel-spectrogram or MFCC)
         # Will do nothing for raw waveform-based models (e.g., RawNets)
-        feats, _ = self.extract_feats(
-            speech_1, None, False
-        )  # we only use first 0.5 segment at inference # extract features + normalize
+        # feats, _ = self.extract_feats(
+        #     speech_1, None, False
+        # )  # we only use first 0.5 segment at inference # extract features + normalize
         feats_clean_1, _ = self.extract_feats(
             speech_1, None, True
         )  # rir/musan aug + extract feats + specaug + normalize
@@ -129,21 +181,21 @@ class ESPnetSpeakerModel(AbsESPnetModel):
         feats_2_pitch, _ = self.extract_feats(speech_2_pitch, None, False)  # (N, n_mel)
 
         # 4. extract frame-level feats
-        frame_level_feats = self.encode_frame(feats)
+        # frame_level_feats = self.encode_frame(feats)
         frame_level_feats_clean_1 = self.encode_frame(feats_clean_1)
         frame_level_feats_clean_2 = self.encode_frame(feats_clean_2)
         frame_level_feats_pitch1 = self.encode_frame(feats_1_pitch)
         frame_level_feats_pitch2 = self.encode_frame(feats_2_pitch)
 
         # 5. aggregation into utterance-level
-        utt_level_feat = self.pooling(frame_level_feats, task_tokens)
+        # utt_level_feat = self.pooling(frame_level_feats, task_tokens)
         utt_level_feat_clean_1 = self.pooling(frame_level_feats_clean_1, task_tokens)
         utt_level_feat_clean_2 = self.pooling(frame_level_feats_clean_2, task_tokens)
         utt_level_feat_pitch1 = self.pooling(frame_level_feats_pitch1, task_tokens)
         utt_level_feat_pitch2 = self.pooling(frame_level_feats_pitch2, task_tokens)
 
         # 6. (optionally) go through further projection(s)
-        spk_embd = self.project_spk_embd(utt_level_feat)
+        # spk_embd = self.project_spk_embd(utt_level_feat)
         spk_embd_clean_1 = self.project_spk_embd(utt_level_feat_clean_1)  # (N, nout)
         spk_embd_clean_2 = self.project_spk_embd(utt_level_feat_clean_2)  # (N, nout)
         spk_embd_pitch1 = self.project_spk_embd(utt_level_feat_pitch1)  # (N, nout)
@@ -193,8 +245,8 @@ class ESPnetSpeakerModel(AbsESPnetModel):
         # spk_embd_pitch1 = self.project_spk_embd(utt_level_feat_pitch1)  # (2N, nout)
         # spk_embd_pitch2 = self.project_spk_embd(utt_level_feat_pitch2)  # (2N, nout)
 
-        if extract_embd:
-            return spk_embd
+        # if extract_embd:
+        #     return spk_embd
 
         # 4. calculate loss
         # assert spk_labels is not None, "spk_labels is None, cannot compute loss" # removed for contrastive loss
@@ -296,7 +348,9 @@ class ESPnetSpeakerModel(AbsESPnetModel):
         Returns:
         tuple: Two torch tensors, each containing 0.5-second crops for the entire batch
         """
-        assert len(wav_tensor.shape) == 2, "Input tensor should have shape (batch, num_samples)"
+        assert (
+            len(wav_tensor.shape) == 2
+        ), "Input tensor should have shape (batch, num_samples)"
 
         batch_size, total_samples = wav_tensor.shape
         crop_samples = int(crop_length * sample_rate)
@@ -321,7 +375,9 @@ class ESPnetSpeakerModel(AbsESPnetModel):
 
         possible_starts = total_samples - 2 * crop_samples + 1
         start1 = torch.randint(0, possible_starts, (batch_size,))
-        start2 = torch.randint(crop_samples, total_samples - crop_samples + 1, (batch_size,))
+        start2 = torch.randint(
+            crop_samples, total_samples - crop_samples + 1, (batch_size,)
+        )
 
         # Ensure start2 is always after start1 + crop_samples
         start2 = torch.where(
@@ -332,7 +388,9 @@ class ESPnetSpeakerModel(AbsESPnetModel):
             start2,
         )
         start2 = torch.where(
-            start2 > (total_samples - crop_samples), total_samples - crop_samples, start2
+            start2 > (total_samples - crop_samples),
+            total_samples - crop_samples,
+            start2,
         )
 
         batch_indices = torch.arange(batch_size).unsqueeze(1)
@@ -390,7 +448,12 @@ class ESPnetSpeakerModel(AbsESPnetModel):
 
     # ================================added by jaehwan================================
     def change_pitch(
-        self, wav: NDArray[np.float32], sr: int, fs_ratio: float, pr_factor: float, ms_factor: float
+        self,
+        wav: NDArray[np.float32],
+        sr: int,
+        fs_ratio: float,
+        pr_factor: float,
+        ms_factor: float,
     ) -> NDArray[np.float32]:
 
         F0_MIN = 50.0
@@ -418,13 +481,22 @@ class ESPnetSpeakerModel(AbsESPnetModel):
 
         snd_f0_shifted = float(
             np.clip(
-                snd_f0_median + ms_factor, F0_MIN + F0_MEDIAN_SAFEAREA, F0_MAX - F0_MEDIAN_SAFEAREA
+                snd_f0_median + ms_factor,
+                F0_MIN + F0_MEDIAN_SAFEAREA,
+                F0_MAX - F0_MEDIAN_SAFEAREA,
             )
         )
 
         out: NDArray[np.float64] = (
             parselmouth.praat.call(
-                snd, "Change gender", F0_MIN, F0_MAX, fs_ratio, snd_f0_shifted, pr_factor, 1.0
+                snd,
+                "Change gender",
+                F0_MIN,
+                F0_MAX,
+                fs_ratio,
+                snd_f0_shifted,
+                pr_factor,
+                1.0,
             )
             .as_array()
             .flatten()

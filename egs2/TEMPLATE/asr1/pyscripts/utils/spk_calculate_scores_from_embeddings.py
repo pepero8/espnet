@@ -3,6 +3,7 @@ import sys
 from collections import OrderedDict
 
 import numpy as np
+
 import torch
 
 
@@ -12,9 +13,7 @@ def load_embeddings(embd_dir: str) -> dict:
     for k, v in embd_dic.items():
         if len(v.shape) == 1:
             v = v[None, :]
-        embd_dic2[k] = torch.nn.functional.normalize(
-            torch.from_numpy(v), p=2, dim=1
-        ).numpy()
+        embd_dic2[k] = torch.nn.functional.normalize(torch.from_numpy(v), p=2, dim=1).numpy()
 
     return embd_dic2
 
@@ -25,6 +24,8 @@ def main(args):
     out_dir = args[2]
 
     embd_dic = load_embeddings(embd_dir)
+
+    print(f"Number of keys: {len(embd_dic)}")  # 4708
     with open(trial_label, "r") as f:
         lines = f.readlines()
     trial_ids = [line.strip().split(" ")[0] for line in lines]
@@ -35,15 +36,21 @@ def main(args):
     assert len(enrolls) == len(tests) == len(labels)
 
     scores = []
+    key_error_count = 0  # added by jaehwan
     for e, t in zip(enrolls, tests):
-        enroll = torch.from_numpy(embd_dic[e])
-        test = torch.from_numpy(embd_dic[t])
-        if len(enroll.size()) == 1:
-            enroll = enroll.unsqueeze(0)
-            test = enroll.unsqueeze(0)
-        score = torch.cdist(enroll, test)
-        score = -1.0 * torch.mean(score)
-        scores.append(score.item())
+        try:  # added by jaehwan
+            enroll = torch.from_numpy(embd_dic[e])
+            test = torch.from_numpy(embd_dic[t])
+            if len(enroll.size()) == 1:
+                enroll = enroll.unsqueeze(0)
+                test = enroll.unsqueeze(0)
+            score = torch.cdist(enroll, test)
+            score = -1.0 * torch.mean(score)
+            scores.append(score.item())
+        except KeyError:  # added by jaehwan
+            key_error_count += 1
+            continue
+    print(f"completed score calculation, total key errors: {key_error_count}")  # added by jaehwan
 
     if not os.path.exists(os.path.dirname(out_dir)):
         os.makedirs(os.path.dirname(out_dir))
