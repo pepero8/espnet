@@ -11,15 +11,14 @@ Requirements: g++, nvcc
 conda environment: [environment.yaml](./environment.yaml)
 <br>
 위의 conda 환경 파일로 espnet 환경 생성
-```bash
+```
+$ conda clean -a
 $ conda env create -n espnet -f environment.yaml
-```
-이후 espnet/tools로 이동, 다음을 실행
-```
-$ ./setup_anaconda.sh <conda_path> espnet 3.8 # conda_path에 conda 설치 경로 넣기
+$ cd ./tools
+$ ./setup_create_activate_python.sh <conda_path> espnet 3.8 # conda_path에 conda 설치 경로 넣기(ex. ./setup_create_activate_python.sh /home/user/anaconda3 espnet 3.8)
 $ conda activate espnet
-$ cd ..
-$ python3 -m pip install -e "..[train, recipe]"
+$ python3 -m pip install -e "..[train, recipe]
+
 ```
 만약 오류가 뜰 경우 위의 공식 사이트의 Installation에 Step 2) - 3. Setup Python environment를 참고하여 환경을 만든 후, 4. Install ESPnet 을 진행
 
@@ -41,7 +40,7 @@ Vox1, Vox2 데이터셋은 다운이 되어있다고 가정한다.
     <br>
     ...
 
-1. egs2/voxceleb/spk1/ 으로 이동
+1. espnet/egs2/voxceleb/spk1/ 으로 이동
 2. local/data.sh에 데이터셋 경로를 수정한다. 예) data_dir_prefix=/shared/oil/voice/
 
     db.sh에도 VOXCELEB path를 수정한다. 예) VOXCELEB=/shared/oil/voice/

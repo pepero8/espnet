@@ -20,10 +20,6 @@ dependencies:
   - certifi=2024.7.4=pyhd8ed1ab_0
   - cffi=1.16.0=py38h5eee18b_1
   - charset-normalizer=3.3.2=pyhd3eb1b0_0
-  - conda=24.7.1=py38h06a4308_0
-  - conda-libmamba-solver=24.7.0=pyhd3eb1b0_0
-  - conda-package-handling=2.3.0=py38h06a4308_0
-  - conda-package-streaming=0.10.0=py38h06a4308_0
   - cuda-cudart=12.1.105=0
   - cuda-cupti=12.1.105=0
   - cuda-libraries=12.1.0=0
@@ -43,8 +39,6 @@ dependencies:
   - font-ttf-source-code-pro=2.038=h77eed37_0
   - font-ttf-ubuntu=0.83=h77eed37_2
   - fontconfig=2.14.2=h14ed4e7_0
-  - fonts-conda-ecosystem=1=0
-  - fonts-conda-forge=1=0
   - freetype=2.12.1=h267a509_2
   - fribidi=1.0.10=h36c2ea0_0
   - frozendict=2.4.2=py38h5eee18b_0
