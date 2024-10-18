@@ -7,7 +7,7 @@ stage=1
 stop_stage=100
 n_proc=8
 
-data_dir_prefix=/shared/oil/voice/ # root dir to save datasets.
+data_dir_prefix=/shared/data/voice # root dir to save datasets.
 
 trg_dir=data
 
@@ -47,59 +47,59 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     fi
 
     # download VoxCeleb1 devset txt data
-    if [ ! -f ${data_dir_prefix}/voxceleb1/vox1_dev_txt.zip ]; then
-        wget -P ${data_dir_prefix} https://mm.kaist.ac.kr/datasets/voxceleb/data/vox1_dev_txt.zip
-    else
-        log "Voxceleb1 devset txt data exists. Skip download."
-    fi
+    # if [ ! -f ${data_dir_prefix}/voxceleb1/vox1_dev_txt.zip ]; then
+    #     wget -P ${data_dir_prefix} https://mm.kaist.ac.kr/datasets/voxceleb/data/vox1_dev_txt.zip
+    # else
+    #     log "Voxceleb1 devset txt data exists. Skip download."
+    # fi
 
     # download VoxCeleb1 testset txt data
-    if [ ! -f ${data_dir_prefix}/voxceleb1/vox1_test_txt.zip ]; then
-        wget -P ${data_dir_prefix} https://mm.kaist.ac.kr/datasets/voxceleb/data/vox1_test_txt.zip
-    else
-        log "Voxceleb1 testset txt data exists. Skip download."
-    fi
+    # if [ ! -f ${data_dir_prefix}/voxceleb1/vox1_test_txt.zip ]; then
+    #     wget -P ${data_dir_prefix} https://mm.kaist.ac.kr/datasets/voxceleb/data/vox1_test_txt.zip
+    # else
+    #     log "Voxceleb1 testset txt data exists. Skip download."
+    # fi
 
     # download VoxCeleb2 devset txt data
-    if [ ! -f ${data_dir_prefix}/voxceleb2/vox2_dev_txt.zip ]; then
-        # -c for the case when download is incomplete
-        # (to continue download when the script is ran again)
-        wget -P ${data_dir_prefix} -c https://mm.kaist.ac.kr/datasets/voxceleb/data/vox2_dev_txt.zip
-    else
-        log "Voxceleb2 devset txt data exists. Skip download."
-    fi
+    # if [ ! -f ${data_dir_prefix}/voxceleb2/vox2_dev_txt.zip ]; then
+    #     # -c for the case when download is incomplete
+    #     # (to continue download when the script is ran again)
+    #     wget -P ${data_dir_prefix} -c https://mm.kaist.ac.kr/datasets/voxceleb/data/vox2_dev_txt.zip
+    # else
+    #     log "Voxceleb2 devset txt data exists. Skip download."
+    # fi
 
     # 밑에서 txt zip파일을 unzip하기 전에 이전에 생성됐던 txt/ 디렉토리가 있을 경우 먼저 지워야 함
-    if [ -d ${data_dir_prefix}/txt ]; then
-        rm -rf ${data_dir_prefix}/txt
-    fi
+    # if [ -d ${data_dir_prefix}/txt ]; then
+    #     rm -rf ${data_dir_prefix}/txt
+    # fi
 
 #==========================================================================<changed by jaehwan==========================================================================
-    log "Extracting VoxCeleb1 test set text data."
+    # log "Extracting VoxCeleb1 test set text data."
     # unzip -q ${data_dir_prefix}/vox1_test_txt.zip -d ${data_dir_prefix}
-    if [ ! -d "${data_dir_prefix}/voxceleb1/test" ]; then
-        unzip -q ${data_dir_prefix}/vox1_test_txt.zip -d ${data_dir_prefix}
-        mkdir -p ${data_dir_prefix}/voxceleb1/test
-        mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb1/test # added
-    fi
+    # if [ ! -d "${data_dir_prefix}/voxceleb1/test" ]; then
+    #     unzip -q ${data_dir_prefix}/vox1_test_txt.zip -d ${data_dir_prefix}
+    #     mkdir -p ${data_dir_prefix}/voxceleb1/test
+    #     mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb1/test # added
+    # fi
     # mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb1/test
 
-    log "Extracting VoxCeleb1 development set text data."
+    # log "Extracting VoxCeleb1 development set text data."
     # unzip -q ${data_dir_prefix}/vox1_dev_txt.zip -d ${data_dir_prefix}
-    if [ ! -d ${data_dir_prefix}/voxceleb1/dev ]; then
-        unzip -q ${data_dir_prefix}/vox1_dev_txt.zip -d ${data_dir_prefix}
-        mkdir -p ${data_dir_prefix}/voxceleb1/dev
-        mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb1/dev # added
-    fi
+    # if [ ! -d ${data_dir_prefix}/voxceleb1/dev ]; then
+    #     unzip -q ${data_dir_prefix}/vox1_dev_txt.zip -d ${data_dir_prefix}
+    #     mkdir -p ${data_dir_prefix}/voxceleb1/dev
+    #     mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb1/dev # added
+    # fi
     # mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb1/dev
 
-    log "Extracting VoxCeleb2 text data."
+    # log "Extracting VoxCeleb2 text data."
     # unzip -q ${data_dir_prefix}/vox2_dev_txt.zip -d ${data_dir_prefix}
-    if [ ! -d ${data_dir_prefix}/voxceleb2/dev ]; then
-        unzip -q ${data_dir_prefix}/vox2_dev_txt.zip -d ${data_dir_prefix}
-        mkdir -p ${data_dir_prefix}/voxceleb2/dev
-        mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb2/dev # added
-   fi
+#     if [ ! -d ${data_dir_prefix}/voxceleb2/dev ]; then
+#         unzip -q ${data_dir_prefix}/vox2_dev_txt.zip -d ${data_dir_prefix}
+#         mkdir -p ${data_dir_prefix}/voxceleb2/dev
+#         mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb2/dev # added
+#    fi
     # mv ${data_dir_prefix}/txt ${data_dir_prefix}/voxceleb2/dev
 #==========================================================================changed by jaehwan>==========================================================================
 
@@ -161,6 +161,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
     fi
 
     # make scp files
+    mkdir -p ${trg_dir}
     for x in music noise speech; do
         # find ${data_dir_prefix}/musan/${x} -iname "*.wav" > ${data_dir_prefix}/musan_${x}.scp
         find ${data_dir_prefix}/musan/${x} -iname "*.wav" > ${trg_dir}/musan_${x}.scp # added by jaehwan
@@ -184,23 +185,24 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
     mkdir -p ${trg_dir}/voxceleb2_test
     python local/data_prep.py --src "${data_dir_prefix}/voxceleb1/test/wav" --dst "${trg_dir}/voxceleb1_test"
     python local/data_prep.py --src "${data_dir_prefix}/voxceleb1/dev/wav" --dst "${trg_dir}/voxceleb1_dev"
-    python local/data_prep.py --src "${data_dir_prefix}/voxceleb2/dev/wav" --dst "${trg_dir}/voxceleb2_dev"
-    python local/data_prep.py --src "${data_dir_prefix}/voxceleb2/test/wav" --dst "${trg_dir}/voxceleb2_test"
+    # python local/data_prep.py --src "${data_dir_prefix}/voxceleb2/dev/wav" --dst "${trg_dir}/voxceleb2_dev" # uncomment this if you downloaded voxceleb2
+    # python local/data_prep.py --src "${data_dir_prefix}/voxceleb2/test/wav" --dst "${trg_dir}/voxceleb2_test" # uncomment this if you downloaded voxceleb2
 
     for f in wav.scp utt2spk spk2utt; do
         sort ${trg_dir}/voxceleb1_test/${f} -o ${trg_dir}/voxceleb1_test/${f}
         sort ${trg_dir}/voxceleb1_dev/${f} -o ${trg_dir}/voxceleb1_dev/${f}
-        sort ${trg_dir}/voxceleb2_dev/${f} -o ${trg_dir}/voxceleb2_dev/${f}
-        sort ${trg_dir}/voxceleb2_test/${f} -o ${trg_dir}/voxceleb2_test/${f}
+        # sort ${trg_dir}/voxceleb2_dev/${f} -o ${trg_dir}/voxceleb2_dev/${f}
+        # sort ${trg_dir}/voxceleb2_test/${f} -o ${trg_dir}/voxceleb2_test/${f}
     done
 
     # combine VoxCeleb 1 and 2 dev sets for combined training set.
-    mkdir -p ${trg_dir}/voxceleb12_devs
-    for f in wav.scp utt2spk spk2utt; do
-        cat ${trg_dir}/voxceleb1_dev/${f} >> ${trg_dir}/voxceleb12_devs/${f}
-        cat ${trg_dir}/voxceleb2_dev/${f} >> ${trg_dir}/voxceleb12_devs/${f}
-        sort ${trg_dir}/voxceleb12_devs/${f} -o ${trg_dir}/voxceleb12_devs/${f}
-    done
+    # uncomment this if you downloaded voxceleb2
+    # mkdir -p ${trg_dir}/voxceleb12_devs
+    # for f in wav.scp utt2spk spk2utt; do
+    #     cat ${trg_dir}/voxceleb1_dev/${f} >> ${trg_dir}/voxceleb12_devs/${f}
+    #     cat ${trg_dir}/voxceleb2_dev/${f} >> ${trg_dir}/voxceleb12_devs/${f}
+    #     sort ${trg_dir}/voxceleb12_devs/${f} -o ${trg_dir}/voxceleb12_devs/${f}
+    # done
 
     # make test trial compatible with ESPnet.
     python local/convert_trial.py --trial ${data_dir_prefix}/veri_test2.txt --scp ${trg_dir}/voxceleb1_test/wav.scp --out ${trg_dir}/voxceleb1_test
