@@ -205,7 +205,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
     # done
 
     # make test trial compatible with ESPnet.
-    python local/convert_trial.py --trial ${data_dir_prefix}/veri_test2.txt --scp ${trg_dir}/voxceleb1_test/wav.scp --out ${trg_dir}/voxceleb1_test
+    python local/convert_trial.py --trial ${data_dir_prefix}/veri_test.txt --scp ${trg_dir}/voxceleb1_test/wav.scp --out ${trg_dir}/voxceleb1_test
 
     log "Stage 4, DONE."
 
